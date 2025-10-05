@@ -1,0 +1,216 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes fichiers - FastDrop{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-folder2-open"></i> Mes fichiers</h1>
+                <a href="{{ path('upload') }}" class="btn btn-primary">
+                    <i class="bi bi-cloud-upload"></i> Nouvel upload
+                </a>
+            </div>
+
+            {% if files is empty %}
+                <div class="text-center py-5">
+                    <i class="bi bi-folder-x display-1 text-muted"></i>
+                    <h3 class="mt-3 text-muted">Aucun fichier</h3>
+                    <p class="text-muted">Vous n'avez pas encore uploadé de fichiers.</p>
+                    <a href="{{ path('upload') }}" class="btn btn-primary">
+                        <i class="bi bi-cloud-upload"></i> Commencer un upload
+                    </a>
+                </div>
+            {% else %}
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fichier</th>
+                                        <th>Taille</th>
+                                        <th>Statut</th>
+                                        <th>Projet</th>
+                                        <th>Date d'upload</th>
+                                        <th>Expiration</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for file in files %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    {% set extension = file.filename|split('.')|last|lower %}
+                                                    {% if extension in ['jpg', 'jpeg', 'png', 'gif', 'webp'] %}
+                                                        <i class="bi bi-image text-info me-2"></i>
+                                                    {% elseif extension in ['pdf'] %}
+                                                        <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                                                    {% elseif extension in ['doc', 'docx'] %}
+                                                        <i class="bi bi-file-earmark-word text-primary me-2"></i>
+                                                    {% elseif extension in ['xls', 'xlsx'] %}
+                                                        <i class="bi bi-file-earmark-excel text-success me-2"></i>
+                                                    {% elseif extension in ['ppt', 'pptx'] %}
+                                                        <i class="bi bi-file-earmark-ppt text-warning me-2"></i>
+                                                    {% elseif extension in ['zip', 'rar', '7z'] %}
+                                                        <i class="bi bi-file-earmark-zip text-secondary me-2"></i>
+                                                    {% elseif extension in ['mp4', 'avi', 'mov'] %}
+                                                        <i class="bi bi-file-earmark-play text-danger me-2"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-file-earmark text-muted me-2"></i>
+                                                    {% endif %}
+                                                    <div>
+                                                        <div class="fw-bold">{{ file.filename }}</div>
+                                                        {% if file.description %}
+                                                            <small class="text-muted">{{ file.description }}</small>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">
+                                                    {{ (file.sizeBytes / 1024 / 1024)|number_format(2) }} MB
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if file.status == 'uploading' %}
+                                                    <span class="badge bg-warning">
+                                                        <i class="bi bi-hourglass-split"></i> Upload en cours
+                                                    </span>
+                                                {% elseif file.status == 'ok' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="bi bi-check-circle"></i> Prêt
+                                                    </span>
+                                                {% elseif file.status == 'error' %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="bi bi-exclamation-triangle"></i> Erreur
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ file.status }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if file.projectName %}
+                                                    <span class="badge bg-info">{{ file.projectName }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small>{{ file.createdAt|date('d/m/Y H:i') }}</small>
+                                            </td>
+                                            <td>
+                                                {% if file.expiresAt %}
+                                                    {% set daysLeft = (file.expiresAt.timestamp - 'now'|date('U')) / 86400 %}
+                                                    {% if daysLeft > 0 %}
+                                                        <small class="text-muted">
+                                                            {{ file.expiresAt|date('d/m/Y') }}
+                                                            {% if daysLeft < 7 %}
+                                                                <span class="text-warning">({{ daysLeft|round }}j restant)</span>
+                                                            {% endif %}
+                                                        </small>
+                                                    {% else %}
+                                                        <small class="text-danger">Expiré</small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <small class="text-muted">Jamais</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    {% if file.status == 'ok' %}
+                                                        <a href="{{ path('api_download_file', {id: file.id}) }}" 
+                                                           class="btn btn-outline-primary btn-sm"
+                                                           title="Télécharger">
+                                                            <i class="bi bi-download"></i>
+                                                        </a>
+                                                        <a href="#" class="btn btn-outline-success btn-sm"
+                                                           title="Créer un lien de partage">
+                                                            <i class="bi bi-link-45deg"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                    <button class="btn btn-outline-danger btn-sm"
+                                                            title="Supprimer"
+                                                            onclick="deleteFile({{ file.id }})">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="bi bi-pie-chart"></i> Statistiques
+                                </h6>
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="h4 text-primary">{{ files|length }}</div>
+                                        <small class="text-muted">Fichiers</small>
+                                    </div>
+                                    <div class="col-4">
+                                        {% set totalSize = files|reduce((carry, file) => carry + file.sizeBytes, 0) %}
+                                        <div class="h4 text-success">{{ (totalSize / 1024 / 1024)|number_format(1) }} MB</div>
+                                        <small class="text-muted">Taille totale</small>
+                                    </div>
+                                    <div class="col-4">
+                                        {% set activeFiles = files|filter(f => f.status == 'ok')|length %}
+                                        <div class="h4 text-info">{{ activeFiles }}</div>
+                                        <small class="text-muted">Actifs</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="bi bi-speedometer2"></i> Quota
+                                </h6>
+                                {% if user.quotaTotalBytes is null %}
+                                    <div class="text-center">
+                                        <i class="bi bi-infinity display-6 text-success"></i>
+                                        <div class="mt-2">Quota illimité</div>
+                                    </div>
+                                {% else %}
+                                    {% set usedPercent = (user.quotaUsedBytes / user.quotaTotalBytes) * 100 %}
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar {% if usedPercent > 80 %}bg-danger{% elseif usedPercent > 60 %}bg-warning{% else %}bg-success{% endif %}" 
+                                             style="width: {{ usedPercent }}%"></div>
+                                    </div>
+                                    <div class="text-center">
+                                        <small>
+                                            {{ (user.quotaUsedBytes / 1024 / 1024)|number_format(1) }} MB / 
+                                            {{ (user.quotaTotalBytes / 1024 / 1024)|number_format(1) }} MB
+                                        </small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteFile(fileId) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) {
+        // TODO: Implémenter la suppression
+        alert('Fonction de suppression à implémenter');
+    }
+}
+</script>
+{% endblock %}

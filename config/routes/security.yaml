@@ -1,0 +1,8 @@
+_security_logout:
+    resource: security.route_loader.logout
+    type: service
+
+# Custom logout route
+logout_success:
+    path: /logout-success
+    controller: App\Controller\SecurityController::logoutSuccess

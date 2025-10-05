@@ -1,0 +1,248 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Administration - FastDrop{% endblock %}
+
+{% block page_title %}
+    <i class="bi bi-shield-check me-2"></i>Administration
+{% endblock %}
+
+{% block body %}
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Tableau de bord administrateur</h2>
+            <p class="text-muted mb-0">Vue d'ensemble de la plateforme FastDrop</p>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary">
+                <i class="bi bi-download me-2"></i>Exporter
+            </button>
+            <button class="btn btn-outline-secondary">
+                <i class="bi bi-gear me-2"></i>Paramètres
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon primary">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div class="stat-number">{{ user_stats.total_users ?? 0 }}</div>
+                <div class="stat-label">Utilisateurs total</div>
+                <a href="{{ path('admin_users') }}" class="btn btn-sm btn-outline-primary mt-2">Gérer</a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon success">
+                    <i class="bi bi-files"></i>
+                </div>
+                <div class="stat-number">{{ file_stats.total_files ?? 0 }}</div>
+                <div class="stat-label">Fichiers stockés</div>
+                <a href="#" class="btn btn-sm btn-outline-success mt-2">Voir</a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon warning">
+                    <i class="bi bi-hdd"></i>
+                </div>
+                <div class="stat-number">{{ ((file_stats.total_size ?? 0) / 1024 / 1024 / 1024) | number_format(1) }}</div>
+                <div class="stat-label">GB utilisés</div>
+                <a href="#" class="btn btn-sm btn-outline-warning mt-2">Détails</a>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon info">
+                    <i class="bi bi-link-45deg"></i>
+                </div>
+                <div class="stat-number">{{ token_stats.active_tokens ?? 0 }}</div>
+                <div class="stat-label">Tokens actifs</div>
+                <a href="#" class="btn btn-sm btn-outline-info mt-2">Gérer</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Quick Actions -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning me-2"></i>Actions rapides
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ path('admin_user_create') }}" class="btn btn-primary">
+                            <i class="bi bi-person-plus me-2"></i>Créer un utilisateur
+                        </a>
+                        <a href="{{ path('admin_users') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-people me-2"></i>Gérer les utilisateurs
+                        </a>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-download me-2"></i>Exporter les données
+                        </button>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-gear me-2"></i>Paramètres système
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-activity me-2"></i>État du système
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Base de données</span>
+                        <span class="badge bg-success">Opérationnelle</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Stockage</span>
+                        <span class="badge bg-success">Disponible</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span>Redis</span>
+                        <span class="badge bg-warning">Maintenance</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Antivirus</span>
+                        <span class="badge bg-success">Actif</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Activité récente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activity is empty %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-clock text-muted" style="font-size: 2rem;"></i>
+                            <p class="text-muted mt-2 mb-0">Aucune activité récente</p>
+                        </div>
+                    {% else %}
+                        <div class="list-group list-group-flush">
+                            {% for activity in recent_activity %}
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex align-items-start">
+                                        <div class="me-2">
+                                            {% if activity.action == 'upload' %}
+                                                <i class="bi bi-upload text-success"></i>
+                                            {% elseif activity.action == 'download' %}
+                                                <i class="bi bi-download text-primary"></i>
+                                            {% elseif activity.action == 'login' %}
+                                                <i class="bi bi-box-arrow-in-right text-info"></i>
+                                            {% else %}
+                                                <i class="bi bi-circle text-muted"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <small class="text-muted">{{ activity.action|capitalize }}</small>
+                                            {% if activity.file %}
+                                                <br><strong>{{ activity.file.filename }}</strong>
+                                            {% endif %}
+                                            <br><small class="text-muted">{{ activity.timestamp|date('d/m/Y H:i') }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <a href="#" class="btn btn-sm btn-outline-secondary mt-3">Voir tous les logs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts and Notifications -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bell me-2"></i>Alertes et notifications
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if expiring_files is empty and expiring_tokens is empty and quarantined_files is empty %}
+                        <div class="alert alert-success mb-0">
+                            <i class="bi bi-check-circle me-2"></i>
+                            <strong>Tout va bien !</strong> Aucune alerte ou notification importante à signaler.
+                        </div>
+                    {% else %}
+                        <div class="row">
+                            {% if expiring_files is not empty %}
+                                <div class="col-md-4">
+                                    <h6 class="text-warning">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>Fichiers expirant bientôt
+                                    </h6>
+                                    <ul class="list-unstyled">
+                                        {% for file in expiring_files %}
+                                            <li class="mb-2">
+                                                <small class="text-muted">{{ file.filename }}</small>
+                                                <br><span class="badge bg-warning">Expire dans {{ file.daysUntilExpiration }} jours</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+
+                            {% if expiring_tokens is not empty %}
+                                <div class="col-md-4">
+                                    <h6 class="text-info">
+                                        <i class="bi bi-link-45deg me-2"></i>Tokens expirant bientôt
+                                    </h6>
+                                    <ul class="list-unstyled">
+                                        {% for token in expiring_tokens %}
+                                            <li class="mb-2">
+                                                <small class="text-muted">{{ token.file.filename }}</small>
+                                                <br><span class="badge bg-info">Expire dans {{ token.daysUntilExpiration }} jours</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+
+                            {% if quarantined_files is not empty %}
+                                <div class="col-md-4">
+                                    <h6 class="text-danger">
+                                        <i class="bi bi-shield-exclamation me-2"></i>Fichiers en quarantaine
+                                    </h6>
+                                    <ul class="list-unstyled">
+                                        {% for file in quarantined_files %}
+                                            <li class="mb-2">
+                                                <small class="text-muted">{{ file.filename }}</small>
+                                                <br><span class="badge bg-danger">{{ file.status }}</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

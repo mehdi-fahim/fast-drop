@@ -1,0 +1,269 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ user ? 'Modifier' : 'Créer' }} un utilisateur - Admin{% endblock %}
+
+{% block page_title %}
+    <i class="bi bi-shield-check me-2"></i>Administration
+{% endblock %}
+
+{% block body %}
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">{{ user ? 'Modifier' : 'Créer' }} un utilisateur</h2>
+            <p class="text-muted mb-0">Gestion des comptes utilisateurs</p>
+        </div>
+        <a href="{{ path('admin_users') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Retour à la liste
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Form -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-{{ user ? 'gear' : 'plus' }} me-2"></i>
+                        {{ user ? 'Modification' : 'Création' }} d'utilisateur
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        <i class="bi bi-envelope me-1"></i>Adresse email
+                                    </label>
+                                    <input type="email" 
+                                           class="form-control" 
+                                           id="email" 
+                                           name="email" 
+                                           value="{{ user.email ?? '' }}" 
+                                           required
+                                           placeholder="utilisateur@exemple.com">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">
+                                        <i class="bi bi-lock me-1"></i>Mot de passe
+                                        {% if user %}<small class="text-muted">(Laisser vide pour ne pas changer)</small>{% endif %}
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="password" 
+                                           name="password" 
+                                           {% if not user %}required{% endif %}
+                                           placeholder="Mot de passe sécurisé">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="roles" class="form-label">
+                                        <i class="bi bi-shield me-1"></i>Rôles
+                                    </label>
+                                    <select class="form-select" id="roles" name="roles[]" multiple>
+                                        {% for roleOption in ['ROLE_USER', 'ROLE_UPLOADER', 'ROLE_VIEWER', 'ROLE_ADMIN'] %}
+                                            <option value="{{ roleOption }}" 
+                                                    {% if user and roleOption in user.roles %}selected{% endif %}>
+                                                {{ roleOption }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Maintenez Ctrl (Cmd sur Mac) pour sélectionner plusieurs rôles</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="quota_bytes" class="form-label">
+                                        <i class="bi bi-hdd me-1"></i>Quota total (en octets)
+                                    </label>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="quota_bytes" 
+                                           name="quota_bytes" 
+                                           value="{{ user.quotaTotalBytes ?? '' }}"
+                                           placeholder="Laisser vide pour illimité">
+                                    <div class="form-text">Ex: 1073741824 pour 1GB</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">
+                                        <i class="bi bi-toggle-on me-1"></i>Statut
+                                    </label>
+                                    <select class="form-select" id="status" name="status">
+                                        {% for statusOption in ['active', 'suspended', 'expired', 'pending'] %}
+                                            <option value="{{ statusOption }}" 
+                                                    {% if user and statusOption == user.status %}selected{% endif %}>
+                                                {{ statusOption|capitalize }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="expires_at" class="form-label">
+                                        <i class="bi bi-calendar-event me-1"></i>Date d'expiration
+                                    </label>
+                                    <input type="datetime-local" 
+                                           class="form-control" 
+                                           id="expires_at" 
+                                           name="expires_at" 
+                                           value="{{ user.expiresAt ? user.expiresAt|date('Y-m-d\\TH:i') : '' }}">
+                                    <div class="form-text">Optionnel - Le compte sera désactivé après cette date</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">
+                                <i class="bi bi-sticky me-1"></i>Notes (privées)
+                            </label>
+                            <textarea class="form-control" 
+                                      id="notes" 
+                                      name="notes" 
+                                      rows="4" 
+                                      placeholder="Notes internes sur cet utilisateur...">{{ user.notes ?? '' }}</textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ path('admin_users') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>
+                                {{ user ? 'Enregistrer les modifications' : 'Créer l\'utilisateur' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Panel -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Informations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-primary">Rôles disponibles</h6>
+                    <ul class="list-unstyled mb-3">
+                        <li><span class="badge bg-info me-1">ROLE_USER</span> Utilisateur de base</li>
+                        <li><span class="badge bg-success me-1">ROLE_UPLOADER</span> Peut uploader des fichiers</li>
+                        <li><span class="badge bg-warning me-1">ROLE_VIEWER</span> Peut voir les fichiers</li>
+                        <li><span class="badge bg-danger me-1">ROLE_ADMIN</span> Accès administrateur</li>
+                    </ul>
+
+                    <h6 class="text-primary">Statuts</h6>
+                    <ul class="list-unstyled mb-3">
+                        <li><span class="badge bg-success me-1">Active</span> Compte fonctionnel</li>
+                        <li><span class="badge bg-warning me-1">Suspended</span> Compte suspendu</li>
+                        <li><span class="badge bg-danger me-1">Expired</span> Compte expiré</li>
+                        <li><span class="badge bg-secondary me-1">Pending</span> En attente</li>
+                    </ul>
+
+                    <h6 class="text-primary">Quota</h6>
+                    <p class="text-muted small">
+                        Le quota définit l'espace de stockage maximum pour cet utilisateur.
+                        Laisser vide pour un quota illimité.
+                    </p>
+                </div>
+            </div>
+
+            {% if user %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-graph-up me-2"></i>Statistiques
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Fichiers uploadés:</span>
+                            <strong>{{ user.files|length }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Espace utilisé:</span>
+                            <strong>{{ (user.quotaUsedBytes / (1024*1024*1024))|number_format(2) }} GB</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Dernière connexion:</span>
+                            <strong>
+                                {% if user.lastLoginAt %}
+                                    {{ user.lastLoginAt|date('d/m/Y') }}
+                                {% else %}
+                                    Jamais
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Compte créé:</span>
+                            <strong>{{ user.createdAt|date('d/m/Y') }}</strong>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-calculate quota examples
+    const quotaInput = document.getElementById('quota_bytes');
+    const quotaHelp = document.createElement('div');
+    quotaHelp.className = 'form-text mt-1';
+    quotaHelp.innerHTML = `
+        <small>
+            <a href="#" onclick="document.getElementById('quota_bytes').value='1073741824'; return false;">1 GB</a> |
+            <a href="#" onclick="document.getElementById('quota_bytes').value='5368709120'; return false;">5 GB</a> |
+            <a href="#" onclick="document.getElementById('quota_bytes').value='10737418240'; return false;">10 GB</a>
+        </small>
+    `;
+    quotaInput.parentNode.appendChild(quotaHelp);
+
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const roles = document.getElementById('roles');
+        const selectedRoles = Array.from(roles.selectedOptions).map(option => option.value);
+        
+        if (!email) {
+            e.preventDefault();
+            alert('L\'adresse email est requise');
+            return;
+        }
+        
+        {% if not user %}
+        if (!password) {
+            e.preventDefault();
+            alert('Le mot de passe est requis pour un nouveau compte');
+            return;
+        }
+        {% endif %}
+        
+        if (selectedRoles.length === 0) {
+            e.preventDefault();
+            alert('Au moins un rôle doit être sélectionné');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

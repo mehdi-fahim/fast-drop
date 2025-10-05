@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Erreur de téléchargement - FastDrop{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-header text-center bg-danger text-white">
+                <h4><i class="bi bi-exclamation-triangle"></i> Erreur de téléchargement</h4>
+            </div>
+            <div class="card-body p-4 text-center">
+                <i class="bi bi-x-circle text-danger" style="font-size: 4rem;"></i>
+                <h5 class="mt-3 text-danger">{{ error }}</h5>
+                <p class="text-muted mt-3">{{ reason }}</p>
+                
+                <div class="mt-4">
+                    <a href="{{ path('dashboard') }}" class="btn btn-primary">
+                        <i class="bi bi-house"></i> Retour au dashboard
+                    </a>
+                </div>
+            </div>
+            <div class="card-footer text-center text-muted">
+                <small>
+                    <i class="bi bi-shield-check"></i> 
+                    Connexion sécurisée HTTPS
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-question-circle"></i> Causes possibles</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-clock text-warning"></i>
+                        <strong>Lien expiré:</strong> Le lien de téléchargement a dépassé sa date d'expiration
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-arrow-repeat text-info"></i>
+                        <strong>Limite atteinte:</strong> Le nombre maximum de téléchargements a été atteint
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-shield-x text-danger"></i>
+                        <strong>Token révoqué:</strong> Le lien a été désactivé par l'administrateur
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-file-earmark-x text-secondary"></i>
+                        <strong>Fichier supprimé:</strong> Le fichier n'existe plus sur le serveur
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-globe text-primary"></i>
+                        <strong>Restriction IP:</strong> Votre adresse IP n'est pas autorisée
+                    </li>
+                </ul>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Besoin d'aide?</strong> Contactez l'expéditeur du fichier ou votre administrateur système.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

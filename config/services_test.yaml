@@ -1,0 +1,21 @@
+# Test environment services configuration
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    # Override storage service for tests
+    App\Service\StorageService:
+        arguments:
+            $params: '@parameter_bag'
+            $logger: '@logger'
+        calls:
+            - method: initializeFilesystem
+              arguments: ['@parameter_bag']

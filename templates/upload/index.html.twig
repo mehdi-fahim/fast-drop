@@ -1,0 +1,423 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Upload - FastDrop{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-upload"></i> Upload de fichier</h1>
+    <a href="{{ path('dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Retour au dashboard
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Upload Methods -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-cloud-upload"></i> Méthodes d'upload</h5>
+            </div>
+            <div class="card-body">
+                <!-- Direct Upload -->
+                <div class="mb-4">
+                    <h6><i class="bi bi-upload"></i> Upload direct (recommandé pour fichiers < 100MB)</h6>
+                    <form method="post" action="{{ path('upload_direct') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" name="file" id="fileInput" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="project_name" class="form-label">Nom du projet</label>
+                                    <input type="text" class="form-control" name="project_name" id="project_name">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="expires_at" class="form-label">Date d'expiration</label>
+                                    <input type="datetime-local" class="form-control" name="expires_at" id="expires_at">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" name="description" id="description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="recipients" class="form-label">Destinataires (emails séparés par des virgules)</label>
+                            <input type="text" class="form-control" name="recipients" id="recipients" 
+                                   placeholder="exemple@domain.com, autre@domain.com">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> Uploader le fichier
+                        </button>
+                    </form>
+                </div>
+
+                <hr>
+
+                <!-- Chunked Upload -->
+                <div>
+                    <h6><i class="bi bi-cloud-upload"></i> Upload par chunks (recommandé pour fichiers > 100MB)</h6>
+                    <p class="text-muted">Cette méthode permet d'uploader des fichiers très volumineux de manière fiable.</p>
+                    
+                    <div id="chunkedUploadArea">
+                        <div class="upload-dropzone" id="dropzone">
+                            <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #6c757d;"></i>
+                            <h5 class="mt-3">Glissez-déposez votre fichier ici</h5>
+                            <p class="text-muted">ou cliquez pour sélectionner un fichier</p>
+                            <input type="file" id="chunkedFileInput" style="display: none;">
+                        </div>
+
+                        <div id="uploadForm" style="display: none;" class="mt-4">
+                            <form id="chunkedUploadForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="chunkedProjectName" class="form-label">Nom du projet</label>
+                                            <input type="text" class="form-control" id="chunkedProjectName">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="chunkedExpiresAt" class="form-label">Date d'expiration</label>
+                                            <input type="datetime-local" class="form-control" id="chunkedExpiresAt">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="chunkedDescription" class="form-label">Description</label>
+                                    <textarea class="form-control" id="chunkedDescription" rows="3"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="chunkedRecipients" class="form-label">Destinataires (emails séparés par des virgules)</label>
+                                    <input type="text" class="form-control" id="chunkedRecipients" 
+                                           placeholder="exemple@domain.com, autre@domain.com">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-primary" id="startChunkedUpload">
+                                        <i class="bi bi-upload"></i> Démarrer l'upload
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="cancelChunkedUpload">
+                                        <i class="bi bi-x"></i> Annuler
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div id="uploadProgress" style="display: none;" class="mt-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6><i class="bi bi-upload"></i> Upload en cours</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="progress mb-3">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span id="progressText">0%</span>
+                                        <span id="speedText">-</span>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted" id="fileInfo"></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Upload Guidelines -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6><i class="bi bi-info-circle"></i> Conseils d'upload</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <strong>Fichiers supportés:</strong> PDF, Office, images, vidéos, archives
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <strong>Taille maximale:</strong> 10GB par fichier
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <strong>Upload par chunks:</strong> Recommandé pour fichiers > 100MB
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-shield-check text-info"></i>
+                        <strong>Sécurité:</strong> Scan antivirus automatique
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-clock text-warning"></i>
+                        <strong>Expiration:</strong> Définissez une date d'expiration
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Current Quota -->
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="bi bi-hdd"></i> Votre quota</h6>
+            </div>
+            <div class="card-body">
+                {% if user.quotaTotalBytes %}
+                    <div class="progress quota-bar mb-2">
+                        <div class="progress-bar {{ user.getQuotaUsagePercentage() > 90 ? 'bg-danger' : (user.getQuotaUsagePercentage() > 75 ? 'bg-warning' : 'bg-success') }}" 
+                             role="progressbar" 
+                             style="width: {{ user.getQuotaUsagePercentage() }}%">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small>{{ (user.quotaUsedBytes / (1024*1024*1024))|number_format(2) }} GB</small>
+                        <small>{{ (user.quotaTotalBytes / (1024*1024*1024))|number_format(2) }} GB</small>
+                    </div>
+                    <small class="text-muted">Utilisé: {{ user.getQuotaUsagePercentage()|number_format(1) }}%</small>
+                {% else %}
+                    <div class="text-center">
+                        <i class="bi bi-infinity text-success" style="font-size: 2rem;"></i>
+                        <p class="text-success mt-2">Quota illimité</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+class ChunkedUploader {
+    constructor() {
+        this.file = null;
+        this.fileId = null;
+        this.chunkSize = {{ chunk_size }};
+        this.currentChunk = 0;
+        this.totalChunks = 0;
+        this.startTime = null;
+        
+        this.initializeEventListeners();
+    }
+
+    initializeEventListeners() {
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('chunkedFileInput');
+        const startBtn = document.getElementById('startChunkedUpload');
+        const cancelBtn = document.getElementById('cancelChunkedUpload');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', this.handleDragOver.bind(this));
+        dropzone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        dropzone.addEventListener('drop', this.handleDrop.bind(this));
+        
+        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        startBtn.addEventListener('click', this.startUpload.bind(this));
+        cancelBtn.addEventListener('click', this.cancelUpload.bind(this));
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('dragover');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('dragover');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.selectFile(files[0]);
+        }
+    }
+
+    handleFileSelect(e) {
+        if (e.target.files.length > 0) {
+            this.selectFile(e.target.files[0]);
+        }
+    }
+
+    selectFile(file) {
+        this.file = file;
+        this.totalChunks = Math.ceil(file.size / this.chunkSize);
+        
+        document.getElementById('uploadForm').style.display = 'block';
+        document.getElementById('fileInfo').textContent = 
+            `${file.name} (${this.formatFileSize(file.size)}) - ${this.totalChunks} chunks`;
+    }
+
+    async startUpload() {
+        if (!this.file) return;
+
+        const metadata = {
+            filename: this.file.name,
+            size: this.file.size,
+            description: document.getElementById('chunkedDescription').value,
+            project_name: document.getElementById('chunkedProjectName').value,
+            expires_at: document.getElementById('chunkedExpiresAt').value,
+            recipients: document.getElementById('chunkedRecipients').value.split(',').map(r => r.trim()).filter(r => r)
+        };
+
+        try {
+            // Start upload
+            const response = await fetch('/api/upload/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(metadata)
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to start upload');
+            }
+
+            this.fileId = result.file_id;
+            this.startTime = Date.now();
+            
+            // Show progress
+            document.getElementById('uploadForm').style.display = 'none';
+            document.getElementById('uploadProgress').style.display = 'block';
+            
+            // Upload chunks
+            await this.uploadChunks();
+            
+        } catch (error) {
+            alert('Erreur: ' + error.message);
+            this.reset();
+        }
+    }
+
+    async uploadChunks() {
+        for (let i = 0; i < this.totalChunks; i++) {
+            const start = i * this.chunkSize;
+            const end = Math.min(start + this.chunkSize, this.file.size);
+            const chunk = this.file.slice(start, end);
+            
+            const formData = new FormData();
+            formData.append('file_id', this.fileId);
+            formData.append('chunk_index', i);
+            formData.append('chunk_data', chunk);
+
+            try {
+                const response = await fetch('/api/upload/chunk', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to upload chunk');
+                }
+
+                this.currentChunk = i + 1;
+                this.updateProgress(result.progress);
+                
+            } catch (error) {
+                alert('Erreur lors de l\'upload du chunk ' + (i + 1) + ': ' + error.message);
+                this.reset();
+                return;
+            }
+        }
+
+        // Complete upload
+        await this.completeUpload();
+    }
+
+    async completeUpload() {
+        try {
+            // Calculate checksum (simplified - in real implementation, use proper hash)
+            const checksum = 'sha256:' + await this.calculateFileHash();
+            
+            const response = await fetch('/api/upload/complete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_id: this.fileId,
+                    checksum: checksum
+                })
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to complete upload');
+            }
+
+            alert('Upload terminé avec succès!');
+            window.location.href = '/dashboard';
+            
+        } catch (error) {
+            alert('Erreur lors de la finalisation: ' + error.message);
+            this.reset();
+        }
+    }
+
+    async calculateFileHash() {
+        // Simplified hash calculation - in production, use proper crypto
+        const buffer = await this.file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    updateProgress(progress) {
+        const percentage = (this.currentChunk / this.totalChunks) * 100;
+        document.querySelector('.progress-bar').style.width = percentage + '%';
+        document.getElementById('progressText').textContent = 
+            `${percentage.toFixed(1)}% (${this.currentChunk}/${this.totalChunks} chunks)`;
+        
+        if (this.startTime) {
+            const elapsed = (Date.now() - this.startTime) / 1000;
+            const speed = (this.currentChunk * this.chunkSize) / elapsed;
+            document.getElementById('speedText').textContent = this.formatFileSize(speed) + '/s';
+        }
+    }
+
+    cancelUpload() {
+        if (this.fileId) {
+            fetch(`/api/upload/cancel/${this.fileId}`, {
+                method: 'POST'
+            });
+        }
+        this.reset();
+    }
+
+    reset() {
+        this.file = null;
+        this.fileId = null;
+        this.currentChunk = 0;
+        this.totalChunks = 0;
+        
+        document.getElementById('uploadForm').style.display = 'none';
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('chunkedFileInput').value = '';
+        document.getElementById('chunkedUploadForm').reset();
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+}
+
+// Initialize uploader
+const uploader = new ChunkedUploader();
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+# This file is the entry point to configure your own services and load the default configuration.
+# If you want to remove a service, deprecate it, or change its class, you can apply the changes here.
+#
+# If you are *not* using the default services.yaml file in your package, you *must* pass an
+# absolute path to this file's location to the `imports` key in your package's services.yaml (e.g.
+# imports: ['%kernel.project_dir%/config/services.yaml'])
+#
+# See https://symfony.com/doc/current/service_container.html
+#
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    # Storage configuration
+    app.storage.type: 'local'
+    app.storage.local_path: '%kernel.project_dir%/var/storage'
+    app.storage.s3.endpoint: ''
+    app.storage.s3.key: ''
+    app.storage.s3.secret: ''
+    app.storage.s3.bucket: ''
+    app.storage.s3.region: ''
+    
+    # Upload configuration
+    app.upload.chunk_size: 5242880  # 5MB
+    app.upload.max_file_size: 10737418240  # 10GB
+    
+    # Security configuration
+    app.hmac_secret: 'dev-hmac-secret-for-testing-only-change-in-production'
+    
+    # Redis configuration
+    app.redis.url: 'redis://localhost:6379'
+    
+    # Antivirus configuration
+    app.antivirus.host: 'localhost'
+    app.antivirus.port: 3310
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones

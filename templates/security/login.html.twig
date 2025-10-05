@@ -1,0 +1,100 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Connexion - FastDrop{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="col-md-6 col-lg-4">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-cloud-arrow-up text-primary me-2"></i>FastDrop
+                </h4>
+                <p class="text-muted mb-0 mt-2">Plateforme de transfert de fichiers</p>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% if error %}
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>{{ error.messageKey|trans(error.messageData, 'security') }}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="inputEmail" class="form-label">
+                            <i class="bi bi-envelope me-1"></i>Adresse email
+                        </label>
+                        <input type="email" 
+                               value="{{ last_username }}" 
+                               name="_username" 
+                               id="inputEmail" 
+                               class="form-control" 
+                               autocomplete="email" 
+                               required 
+                               autofocus
+                               placeholder="votre@email.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="inputPassword" class="form-label">
+                            <i class="bi bi-lock me-1"></i>Mot de passe
+                        </label>
+                        <input type="password" 
+                               name="_password" 
+                               id="inputPassword" 
+                               class="form-control" 
+                               autocomplete="current-password" 
+                               required
+                               placeholder="Votre mot de passe">
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember_me" name="_remember_me">
+                        <label class="form-check-label" for="remember_me">
+                            Se souvenir de moi
+                        </label>
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg" type="submit">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <small class="text-muted">
+                    <i class="bi bi-shield-check me-1"></i>Connexion sécurisée
+                </small>
+            </div>
+        </div>
+
+        <!-- Features Info -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle me-2"></i>À propos de FastDrop
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <i class="bi bi-upload text-primary d-block" style="font-size: 1.5rem;"></i>
+                        <small class="text-muted">Upload sécurisé</small>
+                    </div>
+                    <div class="col-4">
+                        <i class="bi bi-link-45deg text-success d-block" style="font-size: 1.5rem;"></i>
+                        <small class="text-muted">Liens temporaires</small>
+                    </div>
+                    <div class="col-4">
+                        <i class="bi bi-shield-lock text-warning d-block" style="font-size: 1.5rem;"></i>
+                        <small class="text-muted">Sécurité renforcée</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard - FastDrop{% endblock %}
+
+{% block page_title %}
+    <i class="bi bi-speedometer2 me-2"></i>Dashboard
+{% endblock %}
+
+{% block body %}
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Bienvenue, {{ user.email }}</h2>
+            <p class="text-muted mb-0">Vue d'ensemble de votre espace de stockage</p>
+        </div>
+        <div class="btn-group">
+            {% if user.isAdmin() %}
+                <a href="{{ path('admin_dashboard') }}" class="btn btn-outline-warning">
+                    <i class="bi bi-shield-check me-2"></i>Administration
+                </a>
+            {% endif %}
+            {% if user.canUpload() %}
+                <a href="{{ path('upload') }}" class="btn btn-primary">
+                    <i class="bi bi-upload me-2"></i>Uploader un fichier
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon primary">
+                    <i class="bi bi-files"></i>
+                </div>
+                <div class="stat-number">{{ files|length }}</div>
+                <div class="stat-label">Fichiers stockés</div>
+                <a href="{{ path('files_list') }}" class="btn btn-sm btn-outline-primary mt-2">Voir tout</a>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon success">
+                    <i class="bi bi-hdd"></i>
+                </div>
+                <div class="stat-number">{{ (user.quotaUsedBytes / (1024*1024*1024))|number_format(2) }}</div>
+                <div class="stat-label">GB utilisés</div>
+                <button class="btn btn-sm btn-outline-success mt-2" onclick="showQuotaDetails()">Détails</button>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon info">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+                <div class="stat-number">{{ files|filter(f => f.expiresAt and f.expiresAt > date())|length }}</div>
+                <div class="stat-label">Fichiers actifs</div>
+                <button class="btn btn-sm btn-outline-info mt-2" onclick="filterActiveFiles()">Filtrer</button>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card">
+                <div class="stat-icon warning">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div class="stat-number">{{ files|filter(f => f.expiresAt and f.expiresAt < date('+24 hours'))|length }}</div>
+                <div class="stat-label">Expirent bientôt</div>
+                <button class="btn btn-sm btn-outline-warning mt-2" onclick="filterExpiringFiles()">Voir</button>
+            </div>
+        </div>
+    </div>
+
+<div class="row">
+    <!-- Recent Files -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="bi bi-clock-history"></i> Fichiers récents</h5>
+                <a href="{{ path('files_list') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
+            </div>
+            <div class="card-body">
+                {% if files|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Taille</th>
+                                    <th>Statut</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for file in files|slice(0, 5) %}
+                                    <tr>
+                                        <td>
+                                            <i class="bi bi-file-earmark"></i>
+                                            <strong>{{ file.filename }}</strong>
+                                            {% if file.projectName %}
+                                                <br><small class="text-muted">{{ file.projectName }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ file.formattedSize }}</td>
+                                        <td>
+                                            {% if file.status == 'ok' %}
+                                                <span class="badge bg-success">OK</span>
+                                            {% elseif file.status == 'quarantine' %}
+                                                <span class="badge bg-warning">Quarantaine</span>
+                                            {% elseif file.status == 'uploading' %}
+                                                <span class="badge bg-info">Upload...</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ file.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ file.createdAt|date('d/m/Y H:i') }}</small>
+                                            {% if file.expiresAt %}
+                                                <br><small class="text-muted">Expire: {{ file.expiresAt|date('d/m/Y H:i') }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if file.isAccessible() %}
+                                                    <a href="{{ path('api_download_file', {id: file.id}) }}" 
+                                                       class="btn btn-outline-primary btn-sm">
+                                                        <i class="bi bi-download"></i>
+                                                    </a>
+                                                {% endif %}
+                                                {% if file.status == 'ok' %}
+                                                    <button class="btn btn-outline-success btn-sm" 
+                                                            onclick="generateToken({{ file.id }})">
+                                                        <i class="bi bi-link-45deg"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-folder-x text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-2">Aucun fichier uploadé</p>
+                        {% if user.canUpload() %}
+                            <a href="{{ path('upload') }}" class="btn btn-primary">
+                                <i class="bi bi-upload"></i> Uploader votre premier fichier
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-activity"></i> Activité récente</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activity|length > 0 %}
+                    <div class="list-group list-group-flush">
+                        {% for activity in recent_activity|slice(0, 10) %}
+                            <div class="list-group-item px-0">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-2">
+                                        {% if activity.action == 'upload' %}
+                                            <i class="bi bi-upload text-success"></i>
+                                        {% elseif activity.action == 'download' %}
+                                            <i class="bi bi-download text-primary"></i>
+                                        {% elseif activity.action == 'generate_token' %}
+                                            <i class="bi bi-link-45deg text-info"></i>
+                                        {% else %}
+                                            <i class="bi bi-circle text-muted"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <small class="text-muted">{{ activity.actionDescription }}</small>
+                                        {% if activity.file %}
+                                            <br><strong>{{ activity.file.filename }}</strong>
+                                        {% endif %}
+                                        <br><small class="text-muted">{{ activity.timestamp|date('d/m/Y H:i') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clock text-muted" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2">Aucune activité récente</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quota Warning -->
+{% if quota_usage_percentage > 90 %}
+    <div class="alert alert-warning mt-4">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Attention:</strong> Votre quota de stockage est presque atteint ({{ quota_usage_percentage|number_format(1) }}%).
+        {% if user.canUpload() %}
+            <a href="{{ path('upload') }}" class="alert-link">Supprimez des fichiers</a> ou contactez votre administrateur.
+        {% endif %}
+    </div>
+{% elseif quota_usage_percentage > 75 %}
+    <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle"></i>
+        <strong>Information:</strong> Votre quota de stockage est utilisé à {{ quota_usage_percentage|number_format(1) }}%.
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+<script>
+function generateToken(fileId) {
+    // This would open a modal to configure token settings
+    // For now, just show an alert
+    alert('Fonctionnalité de génération de token à implémenter pour le fichier ID: ' + fileId);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,417 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des Utilisateurs - Admin{% endblock %}
+
+{% block page_title %}
+    <i class="bi bi-shield-check me-2"></i>Administration
+{% endblock %}
+
+{% block body %}
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Gestion des utilisateurs</h2>
+            <p class="text-muted mb-0">Administration des comptes et permissions</p>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary" onclick="exportUsers()">
+                <i class="bi bi-download me-2"></i>Exporter
+            </button>
+            <a href="{{ path('admin_user_create') }}" class="btn btn-primary">
+                <i class="bi bi-person-plus me-2"></i>Créer un utilisateur
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               id="searchUsers" 
+                               placeholder="Rechercher par email...">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Tous les statuts</option>
+                        <option value="active">Actif</option>
+                        <option value="suspended">Suspendu</option>
+                        <option value="expired">Expiré</option>
+                        <option value="pending">En attente</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="filterRole">
+                        <option value="">Tous les rôles</option>
+                        <option value="ROLE_USER">Utilisateur</option>
+                        <option value="ROLE_UPLOADER">Uploader</option>
+                        <option value="ROLE_VIEWER">Viewer</option>
+                        <option value="ROLE_ADMIN">Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="sortBy">
+                        <option value="createdAt">Date de création</option>
+                        <option value="email">Email</option>
+                        <option value="lastLoginAt">Dernière connexion</option>
+                        <option value="quotaUsedBytes">Espace utilisé</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-primary w-100" onclick="applyFilters()">
+                        <i class="bi bi-funnel me-1"></i>Filtrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-people me-2"></i>Liste des utilisateurs
+                    <span class="badge bg-secondary ms-2" id="userCount">{{ users|length }}</span>
+                </h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" onclick="selectAll()">
+                        <i class="bi bi-check-all me-1"></i>Tout sélectionner
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearSelection()">
+                        <i class="bi bi-x-circle me-1"></i>Désélectionner
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                            </th>
+                            <th>Utilisateur</th>
+                            <th>Rôles</th>
+                            <th>Statut</th>
+                            <th>Quota</th>
+                            <th>Dernière connexion</th>
+                            <th>Expiration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr data-user-id="{{ user.id }}" 
+                                data-email="{{ user.email }}" 
+                                data-status="{{ user.status }}"
+                                data-roles="{{ user.roles|join(',') }}">
+                                <td>
+                                    <input type="checkbox" class="form-check-input user-checkbox" value="{{ user.id }}">
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar me-3" style="width: 32px; height: 32px; font-size: 0.875rem;">
+                                            <i class="bi bi-person"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">{{ user.email }}</div>
+                                            <small class="text-muted">ID: {{ user.id }} • Créé le {{ user.createdAt|date('d/m/Y') }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for role in user.roles %}
+                                            {% if role == 'ROLE_ADMIN' %}
+                                                <span class="badge bg-danger">{{ role }}</span>
+                                            {% elseif role == 'ROLE_UPLOADER' %}
+                                                <span class="badge bg-success">{{ role }}</span>
+                                            {% elseif role == 'ROLE_VIEWER' %}
+                                                <span class="badge bg-warning">{{ role }}</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ role }}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if user.status == 'active' %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle me-1"></i>Actif
+                                        </span>
+                                    {% elseif user.status == 'suspended' %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-pause-circle me-1"></i>Suspendu
+                                        </span>
+                                    {% elseif user.status == 'expired' %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-exclamation-circle me-1"></i>Expiré
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-clock me-1"></i>{{ user.status|capitalize }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-muted">
+                                                {{ (user.quotaUsedBytes / (1024*1024*1024))|number_format(2) }} GB
+                                            </small>
+                                            <small class="text-muted">
+                                                {% if user.quotaTotalBytes %}
+                                                    / {{ (user.quotaTotalBytes / (1024*1024*1024))|number_format(2) }} GB
+                                                {% else %}
+                                                    (Illimité)
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        {% if user.quotaTotalBytes %}
+                                            {% set quota_percentage = (user.quotaUsedBytes / user.quotaTotalBytes * 100) %}
+                                            <div class="progress" style="height: 4px;">
+                                                <div class="progress-bar 
+                                                    {% if quota_percentage > 90 %}bg-danger
+                                                    {% elseif quota_percentage > 75 %}bg-warning
+                                                    {% else %}bg-success{% endif %}" 
+                                                     style="width: {{ quota_percentage }}%"></div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if user.lastLoginAt %}
+                                        <div>
+                                            <div>{{ user.lastLoginAt|date('d/m/Y') }}</div>
+                                            <small class="text-muted">{{ user.lastLoginAt|date('H:i') }}</small>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Jamais</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.expiresAt %}
+                                        <div>
+                                            <div>{{ user.expiresAt|date('d/m/Y') }}</div>
+                                            {% if user.isExpired %}
+                                                <span class="badge bg-danger">Expiré</span>
+                                            {% elseif user.daysUntilExpiration <= 7 %}
+                                                <span class="badge bg-warning">Expire bientôt</span>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Jamais</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ path('admin_user_edit', {'id': user.id}) }}" 
+                                           class="btn btn-outline-primary" 
+                                           title="Modifier">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-outline-info" 
+                                                onclick="viewUserDetails({{ user.id }})" 
+                                                title="Détails">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" 
+                                                onclick="confirmDelete({{ user.id }}, '{{ user.email }}')" 
+                                                title="Supprimer">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted">
+                        Affichage de {{ users|length }} utilisateur{{ users|length > 1 ? 's' : '' }}
+                    </span>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary btn-sm" onclick="bulkAction('activate')">
+                        <i class="bi bi-check-circle me-1"></i>Activer sélection
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="bulkAction('suspend')">
+                        <i class="bi bi-pause-circle me-1"></i>Suspendre sélection
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="bulkAction('delete')">
+                        <i class="bi bi-trash me-1"></i>Supprimer sélection
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+let users = {{ users|json_encode|raw }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all checkbox functionality
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const userCheckboxes = document.querySelectorAll('.user-checkbox');
+    
+    selectAllCheckbox.addEventListener('change', function() {
+        userCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Search functionality
+    document.getElementById('searchUsers').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        filterUsers();
+    });
+
+    // Filter change listeners
+    document.getElementById('filterStatus').addEventListener('change', filterUsers);
+    document.getElementById('filterRole').addEventListener('change', filterUsers);
+    document.getElementById('sortBy').addEventListener('change', filterUsers);
+});
+
+function filterUsers() {
+    const searchTerm = document.getElementById('searchUsers').value.toLowerCase();
+    const statusFilter = document.getElementById('filterStatus').value;
+    const roleFilter = document.getElementById('filterRole').value;
+    const sortBy = document.getElementById('sortBy').value;
+    
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    let visibleRows = [];
+    
+    rows.forEach(row => {
+        const email = row.dataset.email.toLowerCase();
+        const status = row.dataset.status;
+        const roles = row.dataset.roles;
+        
+        let show = true;
+        
+        // Search filter
+        if (searchTerm && !email.includes(searchTerm)) {
+            show = false;
+        }
+        
+        // Status filter
+        if (statusFilter && status !== statusFilter) {
+            show = false;
+        }
+        
+        // Role filter
+        if (roleFilter && !roles.includes(roleFilter)) {
+            show = false;
+        }
+        
+        if (show) {
+            visibleRows.push(row);
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Sort visible rows
+    visibleRows.sort((a, b) => {
+        const userA = users.find(u => u.id == a.dataset.userId);
+        const userB = users.find(u => u.id == b.dataset.userId);
+        
+        switch(sortBy) {
+            case 'email':
+                return userA.email.localeCompare(userB.email);
+            case 'lastLoginAt':
+                const dateA = userA.lastLoginAt ? new Date(userA.lastLoginAt) : new Date(0);
+                const dateB = userB.lastLoginAt ? new Date(userB.lastLoginAt) : new Date(0);
+                return dateB - dateA;
+            case 'quotaUsedBytes':
+                return userB.quotaUsedBytes - userA.quotaUsedBytes;
+            default: // createdAt
+                return new Date(userB.createdAt) - new Date(userA.createdAt);
+        }
+    });
+    
+    // Reorder DOM
+    const tbody = document.querySelector('#usersTable tbody');
+    visibleRows.forEach(row => tbody.appendChild(row));
+    
+    // Update count
+    document.getElementById('userCount').textContent = visibleRows.length;
+}
+
+function selectAll() {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.closest('tr').style.display !== 'none') {
+            checkbox.checked = true;
+        }
+    });
+    document.getElementById('selectAllCheckbox').checked = true;
+}
+
+function clearSelection() {
+    document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('selectAllCheckbox').checked = false;
+}
+
+function bulkAction(action) {
+    const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (selectedIds.length === 0) {
+        alert('Veuillez sélectionner au moins un utilisateur');
+        return;
+    }
+    
+    let message = '';
+    switch(action) {
+        case 'activate':
+            message = `Activer ${selectedIds.length} utilisateur(s) ?`;
+            break;
+        case 'suspend':
+            message = `Suspendre ${selectedIds.length} utilisateur(s) ?`;
+            break;
+        case 'delete':
+            message = `Supprimer définitivement ${selectedIds.length} utilisateur(s) ? Cette action est irréversible.`;
+            break;
+    }
+    
+    if (confirm(message)) {
+        // Here you would typically send an AJAX request
+        alert(`Action "${action}" appliquée à ${selectedIds.length} utilisateur(s)`);
+    }
+}
+
+function viewUserDetails(userId) {
+    // Implementation for user details modal
+    alert(`Détails de l'utilisateur ${userId}`);
+}
+
+function confirmDelete(userId, email) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${email}" ?\n\nCette action est irréversible.`)) {
+        // Here you would typically send an AJAX request
+        alert(`Utilisateur ${email} supprimé`);
+    }
+}
+
+function exportUsers() {
+    alert('Export des utilisateurs en cours...');
+}
+</script>
+{% endblock %}
