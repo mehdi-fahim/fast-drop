@@ -11,6 +11,7 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\RedisStore;
+use Symfony\Component\Lock\Store\FlockStore;
 use Predis\Client as RedisClient;
 
 class UploadService
@@ -40,11 +41,21 @@ class UploadService
         $this->logger = $logger;
         $this->chunkSize = $params->get('app.upload.chunk_size', 5 * 1024 * 1024); // 5MB default
 
-        // Initialize Redis lock store
-        $redisUrl = $params->get('app.redis.url', 'redis://localhost:6379');
-        $redis = new RedisClient($redisUrl);
-        $redisStore = new RedisStore($redis);
-        $this->lockFactory = new LockFactory($redisStore);
+        // Initialize lock store (Redis if available, otherwise filesystem locks)
+        try {
+            $redisUrl = $params->get('app.redis.url', 'redis://localhost:6379');
+            $redis = new RedisClient($redisUrl);
+            // simple ping to ensure connectivity
+            $redis->connect();
+            $store = new RedisStore($redis);
+        } catch (\Throwable $e) {
+            // Fallback to FlockStore (no external service required)
+            $store = new FlockStore(sys_get_temp_dir());
+            $this->logger->warning('Redis unavailable for locks, using FlockStore fallback', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+        $this->lockFactory = new LockFactory($store);
     }
 
     public function startUpload(
@@ -137,6 +148,7 @@ class UploadService
 
             // Verify checksum
             $actualChecksum = $this->storageService->getChecksum($tempFilePath);
+            // expectedChecksum envoyé par le client est un SHA-256 hex
             if ($actualChecksum !== $expectedChecksum) {
                 $this->storageService->delete($tempFilePath);
                 throw new \RuntimeException('Checksum verification failed');

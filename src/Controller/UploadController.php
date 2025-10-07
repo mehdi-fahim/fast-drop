@@ -67,12 +67,16 @@ class UploadController extends AbstractController
         }
 
         $fileId = $request->request->get('file_id');
-        $chunkIndex = (int)$request->request->get('chunk_index');
-        $chunkData = $request->request->get('chunk_data');
+        $chunkIndex = $request->request->get('chunk_index');
+        // chunk_data is sent as a Blob in FormData → available under $request->files
+        $uploadedChunk = $request->files->get('chunk_data');
 
-        if (!$fileId || !isset($chunkIndex) || !$chunkData) {
+        if ($fileId === null || $chunkIndex === null || $uploadedChunk === null) {
             return new JsonResponse(['error' => 'Missing required fields'], 400);
         }
+
+        $chunkIndex = (int)$chunkIndex;
+        $chunkData = file_get_contents($uploadedChunk->getPathname());
 
         $file = $this->entityManager->getRepository(File::class)->find($fileId);
         if (!$file || $file->getOwner() !== $user) {
@@ -196,26 +200,9 @@ class UploadController extends AbstractController
         }
 
         // Validate file
+        // Accept any file type; enforce only size to avoid false negatives on uncommon MIME types (e.g., .md)
         $constraint = new FileConstraint([
             'maxSize' => '10G',
-            'mimeTypes' => [
-                'application/pdf',
-                'application/msword',
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'application/vnd.ms-excel',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'application/vnd.ms-powerpoint',
-                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                'text/plain',
-                'image/jpeg',
-                'image/png',
-                'image/gif',
-                'video/mp4',
-                'video/avi',
-                'application/zip',
-                'application/x-rar-compressed',
-                'application/x-7z-compressed',
-            ],
         ]);
 
         $violations = $validator->validate($uploadedFile, $constraint);

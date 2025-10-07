@@ -52,9 +52,25 @@
                 <div class="stat-icon warning">
                     <i class="bi bi-hdd"></i>
                 </div>
-                <div class="stat-number">{{ ((file_stats.total_size ?? 0) / 1024 / 1024 / 1024) | number_format(1) }}</div>
-                <div class="stat-label">GB utilisés</div>
-                <a href="#" class="btn btn-sm btn-outline-warning mt-2">Détails</a>
+                <div class="stat-number">{{ ((file_stats.total_size ?? 0) / 1024 / 1024 / 1024) | number_format(2) }}</div>
+                <div class="stat-label">GB utilisés (fichiers)</div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        {% if file_stats.total_quota_allocated > 0 %}
+                            {% set quota_global_percentage = (file_stats.total_size / file_stats.total_quota_allocated * 100) %}
+                            {{ quota_global_percentage|number_format(1) }}% du quota total
+                            <div class="progress mt-1" style="height: 4px;">
+                                <div class="progress-bar 
+                                    {% if quota_global_percentage > 90 %}bg-danger
+                                    {% elseif quota_global_percentage > 75 %}bg-warning
+                                    {% else %}bg-success{% endif %}" 
+                                     style="width: {{ quota_global_percentage }}%"></div>
+                            </div>
+                        {% else %}
+                            Quota illimité
+                        {% endif %}
+                    </small>
+                </div>
             </div>
         </div>
 

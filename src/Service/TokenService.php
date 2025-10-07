@@ -80,6 +80,57 @@ class TokenService
         return $downloadToken;
     }
 
+    /**
+     * Generate a download token and also return the plain token value
+     * so it can be used in a shareable URL. The plain value is NOT stored
+     * in the database; only its hash is stored for verification.
+     */
+    public function generateTokenWithPlain(
+        File $file,
+        User $createdBy,
+        \DateTimeImmutable $expiresAt,
+        int $maxDownloads = 1,
+        ?string $password = null,
+        ?array $ipWhitelist = null
+    ): array {
+        // Generate cryptographically secure token
+        $tokenBytes = random_bytes(32);
+        $plainToken = base64url_encode($tokenBytes);
+
+        // Hash the token for storage
+        $tokenHash = hash('sha256', $plainToken);
+
+        // Create the download token entity
+        $downloadToken = new DownloadToken();
+        $downloadToken->setFile($file);
+        $downloadToken->setCreatedBy($createdBy);
+        $downloadToken->setTokenHash($tokenHash);
+        $downloadToken->setExpiresAt($expiresAt);
+        $downloadToken->setMaxDownloads($maxDownloads);
+        $downloadToken->setIpWhitelist($ipWhitelist ?? []);
+
+        if ($password !== null) {
+            $passwordHasher = $this->passwordHasherFactory->getPasswordHasher(DownloadToken::class);
+            $downloadToken->setPasswordHash($passwordHasher->hash($password));
+        }
+
+        $this->entityManager->persist($downloadToken);
+        $this->entityManager->flush();
+
+        $this->logger->info('Download token generated (with plain return)', [
+            'file_id' => $file->getId(),
+            'token_id' => $downloadToken->getId(),
+            'expires_at' => $expiresAt->format('Y-m-d H:i:s'),
+            'max_downloads' => $maxDownloads,
+            'created_by' => $createdBy->getEmail()
+        ]);
+
+        return [
+            'entity' => $downloadToken,
+            'token' => $plainToken,
+        ];
+    }
+
     public function verifyToken(string $token, string $clientIp, ?string $password = null): ?DownloadToken
     {
         $tokenHash = hash('sha256', $token);

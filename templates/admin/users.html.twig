@@ -129,19 +129,16 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="d-flex flex-wrap gap-1">
-                                        {% for role in user.roles %}
-                                            {% if role == 'ROLE_ADMIN' %}
-                                                <span class="badge bg-danger">{{ role }}</span>
-                                            {% elseif role == 'ROLE_UPLOADER' %}
-                                                <span class="badge bg-success">{{ role }}</span>
-                                            {% elseif role == 'ROLE_VIEWER' %}
-                                                <span class="badge bg-warning">{{ role }}</span>
-                                            {% else %}
-                                                <span class="badge bg-info">{{ role }}</span>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </div>
+                                    {% set primaryRole = user.primaryRole() %}
+                                    {% if primaryRole == 'Administrateur' %}
+                                        <span class="badge bg-danger">{{ primaryRole }}</span>
+                                    {% elseif primaryRole == 'Uploader' %}
+                                        <span class="badge bg-success">{{ primaryRole }}</span>
+                                    {% elseif primaryRole == 'Visualiseur' %}
+                                        <span class="badge bg-warning">{{ primaryRole }}</span>
+                                    {% else %}
+                                        <span class="badge bg-info">{{ primaryRole }}</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if user.status == 'active' %}

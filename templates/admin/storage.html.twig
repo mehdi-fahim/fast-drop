@@ -1,0 +1,264 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion du Stockage - Admin{% endblock %}
+
+{% block body %}
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-hdd me-2"></i>Gestion du stockage</h2>
+            <p class="text-muted mb-0">Quotas et utilisation de l'espace disque</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ path('admin_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Retour
+            </a>
+            <button class="btn btn-outline-primary" onclick="window.location.reload()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Actualiser
+            </button>
+        </div>
+    </div>
+
+    <!-- Global Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="stat-icon warning me-3">
+                            <i class="bi bi-hdd"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0">Espace total utilisé</h6>
+                            <h3 class="mb-0">{{ (total_used / 1024 / 1024 / 1024)|number_format(2) }} GB</h3>
+                        </div>
+                    </div>
+                    <small class="text-muted">Somme des quotas utilisés par tous les utilisateurs</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="stat-icon info me-3">
+                            <i class="bi bi-pie-chart"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0">Quota total alloué</h6>
+                            <h3 class="mb-0">
+                                {% if total_allocated > 0 %}
+                                    {{ (total_allocated / 1024 / 1024 / 1024)|number_format(2) }} GB
+                                {% else %}
+                                    Illimité
+                                {% endif %}
+                            </h3>
+                        </div>
+                    </div>
+                    <small class="text-muted">Somme des quotas alloués aux utilisateurs</small>
+                    {% if total_allocated > 0 %}
+                        {% set global_percentage = (total_used / total_allocated * 100) %}
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar 
+                                {% if global_percentage > 90 %}bg-danger
+                                {% elseif global_percentage > 75 %}bg-warning
+                                {% else %}bg-success{% endif %}" 
+                                 style="width: {{ global_percentage }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small class="text-muted">{{ global_percentage|number_format(1) }}% utilisé</small>
+                            <small class="text-muted">{{ ((total_allocated - total_used) / 1024 / 1024 / 1024)|number_format(2) }} GB libre</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="stat-icon success me-3">
+                            <i class="bi bi-files"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-0">Taille réelle des fichiers</h6>
+                            <h3 class="mb-0">{{ (total_files_size / 1024 / 1024 / 1024)|number_format(2) }} GB</h3>
+                        </div>
+                    </div>
+                    <small class="text-muted">Espace réellement occupé sur le disque</small>
+                    {% if total_files_size != total_used %}
+                        <div class="alert alert-warning mt-2 mb-0 py-1 px-2">
+                            <small>
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Différence détectée : {{ ((total_files_size - total_used) / 1024 / 1024)|number_format(2) }} MB
+                            </small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Storage Table -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-people me-2"></i>Quotas par utilisateur
+                    <span class="badge bg-secondary ms-2">{{ users|length }}</span>
+                </h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="alert('Recalcul des quotas en cours...');">
+                    <i class="bi bi-arrow-repeat me-1"></i>Recalculer tous les quotas
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Utilisateur</th>
+                            <th>Rôle</th>
+                            <th>Utilisé</th>
+                            <th>Quota alloué</th>
+                            <th>Utilisation</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar me-3" style="width: 32px; height: 32px; font-size: 0.875rem;">
+                                            <i class="bi bi-person"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">{{ user.email }}</div>
+                                            <small class="text-muted">ID: {{ user.id }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% set primaryRole = user.primaryRole() %}
+                                    {% if primaryRole == 'Administrateur' %}
+                                        <span class="badge bg-danger">{{ primaryRole }}</span>
+                                    {% elseif primaryRole == 'Uploader' %}
+                                        <span class="badge bg-success">{{ primaryRole }}</span>
+                                    {% elseif primaryRole == 'Visualiseur' %}
+                                        <span class="badge bg-warning">{{ primaryRole }}</span>
+                                    {% else %}
+                                        <span class="badge bg-info">{{ primaryRole }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ (user.quotaUsedBytes / 1024 / 1024 / 1024)|number_format(2) }}</strong> GB
+                                </td>
+                                <td>
+                                    <form method="post" action="{{ path('admin_user_update_quota', {id: user.id}) }}" class="d-inline">
+                                        <div class="input-group input-group-sm" style="max-width: 200px;">
+                                            <input type="number" 
+                                                   name="quota_gb" 
+                                                   class="form-control" 
+                                                   step="0.1" 
+                                                   min="0"
+                                                   placeholder="Illimité"
+                                                   value="{{ user.quotaTotalBytes ? (user.quotaTotalBytes / (1024*1024*1024))|number_format(1) : '' }}">
+                                            <span class="input-group-text">GB</span>
+                                            <button class="btn btn-outline-secondary" type="submit" title="Mettre à jour le quota">
+                                                <i class="bi bi-check2"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </td>
+                                <td style="min-width: 200px;">
+                                    {% if user.quotaTotalBytes %}
+                                        {% set quota_percentage = (user.quotaUsedBytes / user.quotaTotalBytes * 100) %}
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 20px;">
+                                                <div class="progress-bar 
+                                                    {% if quota_percentage > 90 %}bg-danger
+                                                    {% elseif quota_percentage > 75 %}bg-warning
+                                                    {% else %}bg-success{% endif %}" 
+                                                     style="width: {{ quota_percentage }}%">
+                                                    <small>{{ quota_percentage|number_format(1) }}%</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">{{ ((user.quotaTotalBytes - user.quotaUsedBytes) / 1024 / 1024 / 1024)|number_format(2) }} GB libre</small>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Illimité</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ path('admin_user_edit', {id: user.id}) }}" 
+                                           class="btn btn-outline-primary" 
+                                           title="Modifier l'utilisateur">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{{ path('admin_files') }}?owner={{ user.id }}" 
+                                           class="btn btn-outline-info" 
+                                           title="Voir les fichiers">
+                                            <i class="bi bi-files"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Les quotas sont automatiquement recalculés lors des uploads et suppressions
+                </small>
+                <small class="text-muted">
+                    Total: {{ users|length }} utilisateur{{ users|length > 1 ? 's' : '' }}
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .stat-icon.warning {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+
+    .stat-icon.info {
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .stat-icon.success {
+        background-color: rgba(25, 135, 84, 0.1);
+        color: #198754;
+    }
+
+    .user-avatar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    </style>
+{% endblock %}
+

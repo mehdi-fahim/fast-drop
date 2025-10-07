@@ -275,6 +275,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return in_array(self::ROLE_VIEWER, $this->getRoles()) || $this->isAdmin();
     }
 
+    public function getPrimaryRole(): string
+    {
+        $roles = $this->getRoles();
+        
+        // Ordre de priorité des rôles
+        if (in_array(self::ROLE_ADMIN, $roles)) {
+            return 'Administrateur';
+        }
+        if (in_array(self::ROLE_UPLOADER, $roles)) {
+            return 'Uploader';
+        }
+        if (in_array(self::ROLE_VIEWER, $roles)) {
+            return 'Visualiseur';
+        }
+        
+        return 'Utilisateur';
+    }
+
     public function getStatus(): string
     {
         return $this->status;

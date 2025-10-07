@@ -126,10 +126,11 @@
                                                            title="Télécharger">
                                                             <i class="bi bi-download"></i>
                                                         </a>
-                                                        <a href="#" class="btn btn-outline-success btn-sm"
-                                                           title="Créer un lien de partage">
-                                                            <i class="bi bi-link-45deg"></i>
-                                                        </a>
+                                                        <form method="post" action="{{ path('files_generate_token', {id: file.id}) }}" style="display:inline">
+                                                            <button class="btn btn-outline-success btn-sm" title="Créer un lien de partage">
+                                                                <i class="bi bi-link-45deg"></i>
+                                                            </button>
+                                                        </form>
                                                     {% endif %}
                                                     <button class="btn btn-outline-danger btn-sm"
                                                             title="Supprimer"

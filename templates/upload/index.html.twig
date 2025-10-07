@@ -12,51 +12,12 @@
 
 <div class="row">
     <div class="col-md-8">
-        <!-- Upload Methods -->
+        <!-- Upload par glisser-déposer uniquement -->
         <div class="card mb-4">
             <div class="card-header">
-                <h5><i class="bi bi-cloud-upload"></i> Méthodes d'upload</h5>
+                <h5><i class="bi bi-cloud-upload"></i> Upload par glisser‑déposer</h5>
             </div>
             <div class="card-body">
-                <!-- Direct Upload -->
-                <div class="mb-4">
-                    <h6><i class="bi bi-upload"></i> Upload direct (recommandé pour fichiers < 100MB)</h6>
-                    <form method="post" action="{{ path('upload_direct') }}" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <input type="file" class="form-control" name="file" id="fileInput" required>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="project_name" class="form-label">Nom du projet</label>
-                                    <input type="text" class="form-control" name="project_name" id="project_name">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="expires_at" class="form-label">Date d'expiration</label>
-                                    <input type="datetime-local" class="form-control" name="expires_at" id="expires_at">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" name="description" id="description" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="recipients" class="form-label">Destinataires (emails séparés par des virgules)</label>
-                            <input type="text" class="form-control" name="recipients" id="recipients" 
-                                   placeholder="exemple@domain.com, autre@domain.com">
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-upload"></i> Uploader le fichier
-                        </button>
-                    </form>
-                </div>
-
-                <hr>
-
-                <!-- Chunked Upload -->
                 <div>
                     <h6><i class="bi bi-cloud-upload"></i> Upload par chunks (recommandé pour fichiers > 100MB)</h6>
                     <p class="text-muted">Cette méthode permet d'uploader des fichiers très volumineux de manière fiable.</p>
@@ -338,8 +299,8 @@ class ChunkedUploader {
 
     async completeUpload() {
         try {
-            // Calculate checksum (simplified - in real implementation, use proper hash)
-            const checksum = 'sha256:' + await this.calculateFileHash();
+            // Calculate checksum (SHA-256 hex)
+            const checksum = await this.calculateFileHash();
             
             const response = await fetch('/api/upload/complete', {
                 method: 'POST',

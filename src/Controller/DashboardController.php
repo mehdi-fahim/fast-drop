@@ -64,27 +64,6 @@ class DashboardController extends AbstractController
         ]);
     }
 
-    #[Route('/files', name: 'files_list')]
-    public function filesList(Request $request): Response
-    {
-        $user = $this->getUser();
-        if (!$user) {
-            return $this->redirectToRoute('login');
-        }
-
-        $files = $this->fileRepository->findFilesByOwner($user);
-
-        // Filter by status if requested
-        $status = $request->query->get('status');
-        if ($status && in_array($status, [File::STATUS_OK, File::STATUS_QUARANTINE, File::STATUS_UPLOADING])) {
-            $files = array_filter($files, fn($file) => $file->getStatus() === $status);
-        }
-
-        return $this->render('dashboard/files.html.twig', [
-            'files' => $files,
-            'current_status' => $status,
-        ]);
-    }
 
     #[Route('/profile', name: 'profile')]
     public function profile(): Response

@@ -417,9 +417,7 @@
                         </div>
                         <div class="user-email">{{ app.user.email }}</div>
                         <div class="user-roles">
-                            {% for role in app.user.roles %}
-                                <span class="badge bg-info">{{ role }}</span>
-                            {% endfor %}
+                            <span class="badge bg-info">{{ app.user.primaryRole() }}</span>
                         </div>
                     </div>
 
@@ -467,13 +465,19 @@
                                     </a>
                                 </li>
                                 <li class="sidebar-nav-item">
-                                    <a href="#" class="sidebar-nav-link">
+                                    <a href="{{ path('admin_files') }}" class="sidebar-nav-link">
                                         <i class="bi bi-files"></i>
                                         Fichiers
                                     </a>
                                 </li>
                                 <li class="sidebar-nav-item">
-                                    <a href="#" class="sidebar-nav-link">
+                                    <a href="{{ path('admin_storage') }}" class="sidebar-nav-link">
+                                        <i class="bi bi-hdd"></i>
+                                        Stockage
+                                    </a>
+                                </li>
+                                <li class="sidebar-nav-item">
+                                    <a href="{{ path('admin_tokens') }}" class="sidebar-nav-link">
                                         <i class="bi bi-link-45deg"></i>
                                         Tokens
                                     </a>
@@ -540,7 +544,7 @@
         <!-- Login Layout -->
         <div class="container-fluid">
             <div class="row justify-content-center align-items-center" style="min-height: 100vh; background: var(--light-gray);">
-                <div class="col-md-6 col-lg-4">
+                <div class="col-md-12">
                     <!-- Flash Messages -->
                     {% for message in app.flashes('success') %}
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -554,6 +558,8 @@
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     {% endfor %}
+                    
+                    {% block guest_body %}{% endblock %}
                 </div>
             </div>
         </div>

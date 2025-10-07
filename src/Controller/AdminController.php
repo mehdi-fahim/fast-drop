@@ -41,17 +41,29 @@ class AdminController extends AbstractController
         $totalFiles = $this->fileRepository->count([]);
         $totalTokens = $this->tokenRepository->count([]);
         
-        // Calculate total storage size
+        // Calculate total storage size from files table
         $qb = $this->entityManager->createQueryBuilder();
         $qb->select('SUM(f.sizeBytes) as totalSize')
-           ->from(File::class, 'f');
+           ->from(File::class, 'f')
+           ->where('f.status != :deleted')
+           ->setParameter('deleted', File::STATUS_DELETED);
         $result = $qb->getQuery()->getSingleScalarResult();
         $totalSize = $result ? (int)$result : 0;
+        
+        // Calculate total quota used from users (should match totalSize)
+        $qbUsers = $this->entityManager->createQueryBuilder();
+        $qbUsers->select('SUM(u.quotaUsedBytes) as totalUsed, SUM(u.quotaTotalBytes) as totalQuota')
+            ->from(User::class, 'u');
+        $userQuotaResult = $qbUsers->getQuery()->getSingleResult();
+        $totalUsedByUsers = $userQuotaResult['totalUsed'] ? (int)$userQuotaResult['totalUsed'] : 0;
+        $totalQuotaAllocated = $userQuotaResult['totalQuota'] ? (int)$userQuotaResult['totalQuota'] : 0;
         
         $userStats = ['total_users' => $totalUsers];
         $fileStats = [
             'total_files' => $totalFiles,
-            'total_size' => $totalSize
+            'total_size' => $totalSize,
+            'total_used_by_users' => $totalUsedByUsers,
+            'total_quota_allocated' => $totalQuotaAllocated,
         ];
         $tokenStats = ['active_tokens' => $totalTokens];
         
@@ -246,6 +258,116 @@ class AdminController extends AbstractController
             'current_status' => $status,
             'current_owner' => $ownerId,
         ]);
+    }
+
+    #[Route('/admin/files/{id}/status', name: 'admin_file_update_status', methods: ['POST'])]
+    public function updateFileStatus(int $id, Request $request): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $file = $this->fileRepository->find($id);
+        if (!$file) {
+            throw $this->createNotFoundException('File not found');
+        }
+
+        $newStatus = $request->request->get('status');
+        $allowed = [
+            File::STATUS_OK,
+            File::STATUS_QUARANTINE,
+            File::STATUS_UPLOADING,
+            File::STATUS_DELETED,
+        ];
+
+        if (!in_array($newStatus, $allowed, true)) {
+            $this->addFlash('error', 'Statut invalide');
+            return $this->redirectToRoute('admin_files');
+        }
+
+        $oldStatus = $file->getStatus();
+        if ($oldStatus !== $newStatus) {
+            $file->setStatus($newStatus);
+            $this->entityManager->flush();
+
+            // Audit
+            $this->auditService->logFileUpdate($this->getUser(), $file, [
+                'status' => ['old' => $oldStatus, 'new' => $newStatus],
+            ]);
+
+            $this->addFlash('success', 'Statut mis à jour');
+        }
+
+        return $this->redirectToRoute('admin_files');
+    }
+
+    #[Route('/admin/storage', name: 'admin_storage')]
+    public function storage(Request $request): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        // Get all users with their storage stats
+        $users = $this->userRepository->findAll();
+        
+        // Calculate global stats
+        $qbGlobal = $this->entityManager->createQueryBuilder();
+        $qbGlobal->select('SUM(u.quotaUsedBytes) as totalUsed, SUM(u.quotaTotalBytes) as totalAllocated')
+            ->from(User::class, 'u');
+        $globalStats = $qbGlobal->getQuery()->getSingleResult();
+        
+        $totalUsed = $globalStats['totalUsed'] ? (int)$globalStats['totalUsed'] : 0;
+        $totalAllocated = $globalStats['totalAllocated'] ? (int)$globalStats['totalAllocated'] : 0;
+        
+        // Calculate total files size
+        $qbFiles = $this->entityManager->createQueryBuilder();
+        $qbFiles->select('SUM(f.sizeBytes) as totalSize')
+            ->from(File::class, 'f')
+            ->where('f.status != :deleted')
+            ->setParameter('deleted', File::STATUS_DELETED);
+        $filesResult = $qbFiles->getQuery()->getSingleScalarResult();
+        $totalFilesSize = $filesResult ? (int)$filesResult : 0;
+
+        return $this->render('admin/storage.html.twig', [
+            'users' => $users,
+            'total_used' => $totalUsed,
+            'total_allocated' => $totalAllocated,
+            'total_files_size' => $totalFilesSize,
+        ]);
+    }
+
+    #[Route('/admin/users/{id}/quota', name: 'admin_user_update_quota', methods: ['POST'])]
+    public function updateUserQuota(int $id, Request $request): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $user = $this->userRepository->find($id);
+        if (!$user) {
+            throw $this->createNotFoundException('User not found');
+        }
+
+        $quotaGb = $request->request->get('quota_gb');
+        
+        // Convert GB to bytes (null means unlimited)
+        $quotaBytes = null;
+        if ($quotaGb !== '' && $quotaGb !== null) {
+            $quotaBytes = (int)((float)$quotaGb * 1024 * 1024 * 1024);
+        }
+
+        $oldQuota = $user->getQuotaTotalBytes();
+        if ($oldQuota !== $quotaBytes) {
+            $user->setQuotaTotalBytes($quotaBytes);
+            $this->entityManager->flush();
+
+            // Audit
+            $this->auditService->logUserUpdate($this->getUser(), $user, [
+                'quota' => [
+                    'old' => $oldQuota ? round($oldQuota / 1024 / 1024 / 1024, 2) . ' GB' : 'Illimité',
+                    'new' => $quotaBytes ? round($quotaBytes / 1024 / 1024 / 1024, 2) . ' GB' : 'Illimité',
+                ],
+            ]);
+
+            $this->addFlash('success', 'Quota mis à jour');
+        }
+
+        return $this->redirectToRoute('admin_storage');
     }
 
     #[Route('/admin/files/{id}/delete', name: 'admin_file_delete', methods: ['POST'])]
