@@ -374,4 +374,32 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
         return $diff->days;
     }
+
+    public function getQuotaTotalInGB(): ?float
+    {
+        if ($this->quotaTotalBytes === null) {
+            return null;
+        }
+
+        return round($this->quotaTotalBytes / (1024 * 1024 * 1024), 1);
+    }
+
+    public function getQuotaUsedInGB(): float
+    {
+        return round($this->quotaUsedBytes / (1024 * 1024 * 1024), 2);
+    }
+
+    public function getQuotaDisplayText(): string
+    {
+        if ($this->quotaTotalBytes === null) {
+            return 'Illimité';
+        }
+
+        $totalGB = $this->getQuotaTotalInGB();
+        if ($totalGB >= 1000) {
+            return round($totalGB / 1000, 1) . ' TB';
+        }
+
+        return $totalGB . ' GB';
+    }
 }

@@ -163,14 +163,10 @@
                                     <div>
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <small class="text-muted">
-                                                {{ (user.quotaUsedBytes / (1024*1024*1024))|number_format(2) }} GB
+                                                {{ user.getQuotaUsedInGB() }} GB
                                             </small>
                                             <small class="text-muted">
-                                                {% if user.quotaTotalBytes %}
-                                                    / {{ (user.quotaTotalBytes / (1024*1024*1024))|number_format(2) }} GB
-                                                {% else %}
-                                                    (Illimité)
-                                                {% endif %}
+                                                / {{ user.getQuotaDisplayText() }}
                                             </small>
                                         </div>
                                         {% if user.quotaTotalBytes %}

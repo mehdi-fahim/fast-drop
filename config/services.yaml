@@ -20,8 +20,9 @@ parameters:
     app.storage.s3.region: ''
     
     # Upload configuration
-    app.upload.chunk_size: 5242880  # 5MB
-    app.upload.max_file_size: 10737418240  # 10GB
+    app.upload.chunk_size: 1048576  # 1MB - Plus petit pour de meilleures performances
+    app.upload.max_file_size: 21474836480  # 20GB - Augmenté
+    app.upload.max_chunk_size: 8388608  # 8MB - Limite max par chunk
     
     # Security configuration
     app.hmac_secret: 'dev-hmac-secret-for-testing-only-change-in-production'

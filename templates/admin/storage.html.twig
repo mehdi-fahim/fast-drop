@@ -109,9 +109,11 @@
                     <i class="bi bi-people me-2"></i>Quotas par utilisateur
                     <span class="badge bg-secondary ms-2">{{ users|length }}</span>
                 </h5>
-                <button class="btn btn-sm btn-outline-primary" onclick="alert('Recalcul des quotas en cours...');">
-                    <i class="bi bi-arrow-repeat me-1"></i>Recalculer tous les quotas
-                </button>
+                <form method="POST" action="{{ path('admin_storage_recalculate') }}" style="display: inline;">
+                    <button class="btn btn-sm btn-outline-primary" type="submit" onclick="return confirm('Êtes-vous sûr de vouloir recalculer tous les quotas ?');">
+                        <i class="bi bi-arrow-repeat me-1"></i>Recalculer tous les quotas
+                    </button>
+                </form>
             </div>
         </div>
         <div class="card-body p-0">

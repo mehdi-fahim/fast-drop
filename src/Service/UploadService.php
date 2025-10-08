@@ -154,15 +154,11 @@ class UploadService
                 throw new \RuntimeException('Checksum verification failed');
             }
 
-            // Move to final storage location
-            $tempContent = $this->storageService->read($tempFilePath);
-            if (!$this->storageService->write($file->getStoragePath(), $tempContent)) {
+            // Move to final storage location using move operation
+            if (!$this->storageService->move($tempFilePath, $file->getStoragePath())) {
                 $this->storageService->delete($tempFilePath);
                 throw new \RuntimeException('Failed to move file to final location');
             }
-
-            // Clean up temporary file
-            $this->storageService->delete($tempFilePath);
             $this->cleanupChunks($file);
 
             // Update file status
@@ -332,20 +328,47 @@ class UploadService
         
         ksort($chunkFiles);
 
-        // Assemble chunks
-        $handle = fopen('php://temp', 'r+');
-        foreach ($chunkFiles as $chunkPath) {
-            $chunkContent = $this->storageService->read($chunkPath);
-            fwrite($handle, $chunkContent);
-        }
-        rewind($handle);
-
-        // Write assembled file
-        $assembledContent = stream_get_contents($handle);
-        fclose($handle);
-
-        if (!$this->storageService->write($tempFilePath, $assembledContent)) {
+        // Assemble chunks directly to final file (memory efficient)
+        $finalPath = "files/{$file->getId()}/{$file->getFilename()}";
+        
+        // Create temporary file locally for assembly
+        $tempFile = tempnam(sys_get_temp_dir(), 'fastdrop_assembly_');
+        $finalHandle = fopen($tempFile, 'wb');
+        
+        if (!$finalHandle) {
             return null;
+        }
+
+        try {
+            // Write chunks directly to temporary file
+            foreach ($chunkFiles as $chunkPath) {
+                $chunkStream = $this->storageService->readStream($chunkPath);
+                if ($chunkStream) {
+                    stream_copy_to_stream($chunkStream, $finalHandle);
+                    fclose($chunkStream);
+                }
+            }
+            
+            fclose($finalHandle);
+            
+            // Move assembled file to final location using storage service with stream
+            $tempStream = fopen($tempFile, 'rb');
+            if ($this->storageService->writeStream($finalPath, $tempStream)) {
+                fclose($tempStream);
+                unlink($tempFile); // Clean up temp file
+                $tempFilePath = $finalPath;
+            } else {
+                fclose($tempStream);
+                unlink($tempFile);
+                return null;
+            }
+            
+        } catch (\Exception $e) {
+            fclose($finalHandle);
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+            throw $e;
         }
 
         return $tempFilePath;

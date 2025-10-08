@@ -370,6 +370,39 @@ class AdminController extends AbstractController
         return $this->redirectToRoute('admin_storage');
     }
 
+    #[Route('/admin/storage/recalculate', name: 'admin_storage_recalculate', methods: ['POST'])]
+    public function recalculateQuotas(): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $users = $this->userRepository->findAll();
+        $updated = 0;
+
+        foreach ($users as $user) {
+            // Calculate real used space from files
+            $qb = $this->entityManager->createQueryBuilder();
+            $qb->select('SUM(f.sizeBytes) as totalSize')
+               ->from(File::class, 'f')
+               ->where('f.owner = :user')
+               ->andWhere('f.status != :deleted')
+               ->setParameter('user', $user)
+               ->setParameter('deleted', File::STATUS_DELETED);
+            
+            $result = $qb->getQuery()->getSingleScalarResult();
+            $actualUsed = $result ? (int)$result : 0;
+
+            if ($user->getQuotaUsedBytes() !== $actualUsed) {
+                $user->setQuotaUsedBytes($actualUsed);
+                $updated++;
+            }
+        }
+
+        $this->entityManager->flush();
+
+        $this->addFlash('success', "Quotas recalculés ! {$updated} utilisateurs mis à jour.");
+        return $this->redirectToRoute('admin_storage');
+    }
+
     #[Route('/admin/files/{id}/delete', name: 'admin_file_delete', methods: ['POST'])]
     public function deleteFile(int $id): Response
     {
@@ -383,9 +416,10 @@ class AdminController extends AbstractController
         // Log deletion
         $this->auditService->logDelete($this->getUser(), $file);
 
-        // Update user quota
+        // Update user quota (ensure it doesn't go negative)
         $owner = $file->getOwner();
-        $owner->setQuotaUsedBytes($owner->getQuotaUsedBytes() - $file->getSizeBytes());
+        $newQuotaUsed = max(0, $owner->getQuotaUsedBytes() - $file->getSizeBytes());
+        $owner->setQuotaUsedBytes($newQuotaUsed);
         
         // Delete file entity (cascade will handle related entities)
         $this->entityManager->remove($file);

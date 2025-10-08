@@ -215,7 +215,7 @@ class ChunkedUploader {
         
         document.getElementById('uploadForm').style.display = 'block';
         document.getElementById('fileInfo').textContent = 
-            `${file.name} (${this.formatFileSize(file.size)}) - ${this.totalChunks} chunks`;
+            `${file.name} (${this.formatFileSize(file.size)})`;
     }
 
     async startUpload() {
@@ -339,7 +339,7 @@ class ChunkedUploader {
         const percentage = (this.currentChunk / this.totalChunks) * 100;
         document.querySelector('.progress-bar').style.width = percentage + '%';
         document.getElementById('progressText').textContent = 
-            `${percentage.toFixed(1)}% (${this.currentChunk}/${this.totalChunks} chunks)`;
+            `${percentage.toFixed(1)}%`;
         
         if (this.startTime) {
             const elapsed = (Date.now() - this.startTime) / 1000;

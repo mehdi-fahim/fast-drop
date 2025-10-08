@@ -139,6 +139,25 @@ class StorageService
         }
     }
 
+    public function move(string $source, string $destination): bool
+    {
+        try {
+            $this->filesystem->move($source, $destination);
+            $this->logger->info('File moved successfully', [
+                'source' => $source,
+                'destination' => $destination
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to move file', [
+                'source' => $source,
+                'destination' => $destination,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
     public function exists(string $path): bool
     {
         return $this->filesystem->fileExists($path);
@@ -173,7 +192,19 @@ class StorageService
     public function getChecksum(string $path): string
     {
         try {
-            return $this->filesystem->checksum($path);
+            // Use SHA-256 for consistency with client-side calculation
+            $stream = $this->filesystem->readStream($path);
+            $context = hash_init('sha256');
+            
+            while (!feof($stream)) {
+                $data = fread($stream, 8192); // Read in 8KB chunks
+                if ($data !== false) {
+                    hash_update($context, $data);
+                }
+            }
+            
+            fclose($stream);
+            return hash_final($context);
         } catch (\Exception $e) {
             $this->logger->error('Failed to get file checksum', [
                 'path' => $path,

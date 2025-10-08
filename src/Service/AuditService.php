@@ -106,6 +106,20 @@ class AuditService
         );
     }
 
+    public function logFileUpdate(User $user, File $file, array $metadata = []): void
+    {
+        $this->log(
+            'file_update',
+            $user,
+            $file,
+            array_merge($metadata, [
+                'fileSize' => $file->getSizeBytes(),
+                'filename' => $file->getFilename(),
+                'checksum' => $file->getChecksum()
+            ])
+        );
+    }
+
     public function logDelete(User $user, File $file, array $metadata = []): void
     {
         $this->log(

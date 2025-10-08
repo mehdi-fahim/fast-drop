@@ -80,16 +80,38 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="quota_bytes" class="form-label">
-                                        <i class="bi bi-hdd me-1"></i>Quota total (en octets)
+                                    <label class="form-label">
+                                        <i class="bi bi-hdd me-1"></i>Quota total
                                     </label>
-                                    <input type="number" 
-                                           class="form-control" 
-                                           id="quota_bytes" 
-                                           name="quota_bytes" 
-                                           value="{{ user ? user.quotaTotalBytes : '' }}"
-                                           placeholder="Laisser vide pour illimité">
-                                    <div class="form-text">Ex: 1073741824 pour 1GB</div>
+                                    <div class="quota-options">
+                                        {% set currentQuota = user ? user.quotaTotalBytes : null %}
+                                        {% set quotaOptions = {
+                                            '1073741824': '1 GB',
+                                            '5368709120': '5 GB', 
+                                            '10737418240': '10 GB',
+                                            '107374182400': '100 GB',
+                                            '': 'Illimité'
+                                        } %}
+                                        
+                                        {% for value, label in quotaOptions %}
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" 
+                                                       type="radio" 
+                                                       name="quota_bytes" 
+                                                       id="quota_{{ value|default('unlimited') }}" 
+                                                       value="{{ value }}"
+                                                       {% if currentQuota == value or (currentQuota is null and value == '') %}checked{% endif %}>
+                                                <label class="form-check-label fw-medium" for="quota_{{ value|default('unlimited') }}">
+                                                    {{ label }}
+                                                    {% if value == '' %}
+                                                        <span class="badge bg-success ms-2">∞</span>
+                                                    {% else %}
+                                                        <span class="text-muted ms-2">({{ (value / 1024 / 1024 / 1024)|number_format(1) }} GB)</span>
+                                                    {% endif %}
+                                                </label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
