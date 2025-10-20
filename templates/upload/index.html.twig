@@ -24,10 +24,40 @@
                     
                     <div id="chunkedUploadArea">
                         <div class="upload-dropzone" id="dropzone">
-                            <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #6c757d;"></i>
-                            <h5 class="mt-3">Glissez-déposez votre fichier ici</h5>
-                            <p class="text-muted">ou cliquez pour sélectionner un fichier</p>
-                            <input type="file" id="chunkedFileInput" style="display: none;">
+                            <div class="dropzone-content">
+                                <i class="bi bi-cloud-upload dropzone-icon" style="font-size: 3rem; color: #6c757d;"></i>
+                                <h5 class="mt-3 dropzone-title">Glissez-déposez vos fichiers ici</h5>
+                                <p class="text-muted dropzone-subtitle">ou cliquez pour sélectionner des fichiers</p>
+                                <div class="dropzone-info mt-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-info-circle"></i>
+                                        Support multi-fichiers • Max 10GB par fichier
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="dropzone-overlay" style="display: none;">
+                                <div class="dropzone-overlay-content">
+                                    <i class="bi bi-cloud-upload" style="font-size: 4rem; color: #007bff;"></i>
+                                    <h4 class="mt-3">Relâchez pour uploader</h4>
+                                    <p class="text-muted">Fichiers détectés: <span id="fileCount">0</span></p>
+                                </div>
+                            </div>
+                            <input type="file" id="chunkedFileInput" style="display: none;" multiple>
+                        </div>
+
+                        <!-- Preview des fichiers -->
+                        <div id="filePreview" style="display: none;" class="mt-4">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6><i class="bi bi-files"></i> Fichiers sélectionnés</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearFiles">
+                                        <i class="bi bi-x"></i> Tout effacer
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="fileList" class="row"></div>
+                                </div>
+                            </div>
                         </div>
 
                         <div id="uploadForm" style="display: none;" class="mt-4">
@@ -155,13 +185,12 @@
 
 {% block javascripts %}
 <script>
-class ChunkedUploader {
+class EnhancedChunkedUploader {
     constructor() {
-        this.file = null;
-        this.fileId = null;
+        this.files = [];
         this.chunkSize = {{ chunk_size }};
-        this.currentChunk = 0;
-        this.totalChunks = 0;
+        this.uploadQueue = [];
+        this.currentUpload = null;
         this.startTime = null;
         
         this.initializeEventListeners();
@@ -172,6 +201,7 @@ class ChunkedUploader {
         const fileInput = document.getElementById('chunkedFileInput');
         const startBtn = document.getElementById('startChunkedUpload');
         const cancelBtn = document.getElementById('cancelChunkedUpload');
+        const clearBtn = document.getElementById('clearFiles');
 
         dropzone.addEventListener('click', () => fileInput.click());
         dropzone.addEventListener('dragover', this.handleDragOver.bind(this));
@@ -181,79 +211,180 @@ class ChunkedUploader {
         fileInput.addEventListener('change', this.handleFileSelect.bind(this));
         startBtn.addEventListener('click', this.startUpload.bind(this));
         cancelBtn.addEventListener('click', this.cancelUpload.bind(this));
+        clearBtn.addEventListener('click', this.clearFiles.bind(this));
     }
 
     handleDragOver(e) {
         e.preventDefault();
-        e.currentTarget.classList.add('dragover');
+        e.stopPropagation();
+        const dropzone = e.currentTarget;
+        dropzone.classList.add('dragover');
+        
+        // Update file count in overlay
+        const fileCount = e.dataTransfer.items ? e.dataTransfer.items.length : 0;
+        document.getElementById('fileCount').textContent = fileCount;
     }
 
     handleDragLeave(e) {
         e.preventDefault();
-        e.currentTarget.classList.remove('dragover');
+        e.stopPropagation();
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            e.currentTarget.classList.remove('dragover');
+        }
     }
 
     handleDrop(e) {
         e.preventDefault();
+        e.stopPropagation();
         e.currentTarget.classList.remove('dragover');
         
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            this.selectFile(files[0]);
-        }
+        const files = Array.from(e.dataTransfer.files);
+        this.addFiles(files);
     }
 
     handleFileSelect(e) {
-        if (e.target.files.length > 0) {
-            this.selectFile(e.target.files[0]);
+        const files = Array.from(e.target.files);
+        this.addFiles(files);
+    }
+
+    addFiles(files) {
+        files.forEach(file => {
+            // Check if file already exists
+            const exists = this.files.some(f => f.name === file.name && f.size === file.size);
+            if (!exists) {
+                this.files.push({
+                    file: file,
+                    id: this.generateFileId(),
+                    status: 'ready',
+                    progress: 0,
+                    chunks: Math.ceil(file.size / this.chunkSize),
+                    uploadedChunks: 0
+                });
+            }
+        });
+        
+        this.updateFilePreview();
+        this.updateUploadForm();
+    }
+
+    generateFileId() {
+        return 'file_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    }
+
+    getFileIconClass(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        if (['pdf'].includes(ext)) return 'pdf';
+        if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) return 'doc';
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) return 'image';
+        if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(ext)) return 'video';
+        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'archive';
+        return 'default';
+    }
+
+    getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        if (['pdf'].includes(ext)) return 'bi-file-earmark-pdf';
+        if (['doc', 'docx'].includes(ext)) return 'bi-file-earmark-word';
+        if (['xls', 'xlsx'].includes(ext)) return 'bi-file-earmark-excel';
+        if (['ppt', 'pptx'].includes(ext)) return 'bi-file-earmark-ppt';
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) return 'bi-file-earmark-image';
+        if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(ext)) return 'bi-file-earmark-play';
+        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'bi-file-earmark-zip';
+        return 'bi-file-earmark';
+    }
+
+    updateFilePreview() {
+        const preview = document.getElementById('filePreview');
+        const fileList = document.getElementById('fileList');
+        
+        if (this.files.length === 0) {
+            preview.style.display = 'none';
+            return;
+        }
+        
+        preview.style.display = 'block';
+        fileList.innerHTML = '';
+        
+        this.files.forEach((fileData, index) => {
+            const file = fileData.file;
+            const card = document.createElement('div');
+            card.className = 'col-md-6 col-lg-4 mb-3';
+            card.innerHTML = `
+                <div class="file-preview-card">
+                    <button type="button" class="file-remove-btn" onclick="uploader.removeFile(${index})">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    <div class="d-flex align-items-center">
+                        <div class="file-type-icon ${this.getFileIconClass(file.name)}">
+                            <i class="${this.getFileIcon(file.name)}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 text-truncate" title="${file.name}">${file.name}</h6>
+                            <small class="text-muted">${this.formatFileSize(file.size)}</small>
+                            <div class="mt-1">
+                                <span class="badge bg-secondary">${fileData.chunks} chunks</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            fileList.appendChild(card);
+        });
+    }
+
+    removeFile(index) {
+        this.files.splice(index, 1);
+        this.updateFilePreview();
+        this.updateUploadForm();
+    }
+
+    clearFiles() {
+        this.files = [];
+        this.updateFilePreview();
+        this.updateUploadForm();
+        document.getElementById('chunkedFileInput').value = '';
+    }
+
+    updateUploadForm() {
+        const uploadForm = document.getElementById('uploadForm');
+        if (this.files.length > 0) {
+            uploadForm.style.display = 'block';
+        } else {
+            uploadForm.style.display = 'none';
         }
     }
 
-    selectFile(file) {
-        this.file = file;
-        this.totalChunks = Math.ceil(file.size / this.chunkSize);
-        
-        document.getElementById('uploadForm').style.display = 'block';
-        document.getElementById('fileInfo').textContent = 
-            `${file.name} (${this.formatFileSize(file.size)})`;
-    }
-
     async startUpload() {
-        if (!this.file) return;
+        if (this.files.length === 0) return;
 
         const metadata = {
-            filename: this.file.name,
-            size: this.file.size,
             description: document.getElementById('chunkedDescription').value,
             project_name: document.getElementById('chunkedProjectName').value,
             expires_at: document.getElementById('chunkedExpiresAt').value,
             recipients: document.getElementById('chunkedRecipients').value.split(',').map(r => r.trim()).filter(r => r)
         };
 
+        this.startTime = Date.now();
+        
+        // Show progress
+        document.getElementById('uploadForm').style.display = 'none';
+        document.getElementById('uploadProgress').style.display = 'block';
+        
         try {
-            // Start upload
-            const response = await fetch('/api/upload/start', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(metadata)
-            });
-
-            const result = await response.json();
-            if (!result.success) {
-                throw new Error(result.error || 'Failed to start upload');
+            // Upload files sequentially
+            for (let i = 0; i < this.files.length; i++) {
+                const fileData = this.files[i];
+                fileData.status = 'uploading';
+                this.currentUpload = fileData;
+                
+                await this.uploadFile(fileData, metadata);
+                
+                fileData.status = 'completed';
+                fileData.progress = 100;
             }
-
-            this.fileId = result.file_id;
-            this.startTime = Date.now();
             
-            // Show progress
-            document.getElementById('uploadForm').style.display = 'none';
-            document.getElementById('uploadProgress').style.display = 'block';
-            
-            // Upload chunks
-            await this.uploadChunks();
+            alert('Tous les fichiers ont été uploadés avec succès!');
+            window.location.href = '/dashboard';
             
         } catch (error) {
             alert('Erreur: ' + error.message);
@@ -261,14 +392,53 @@ class ChunkedUploader {
         }
     }
 
-    async uploadChunks() {
-        for (let i = 0; i < this.totalChunks; i++) {
+    async uploadFile(fileData, metadata) {
+        const file = fileData.file;
+        
+        try {
+            // Start upload for this file
+            const response = await fetch('/api/upload/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: file.name,
+                    size: file.size,
+                    ...metadata
+                })
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to start upload');
+            }
+
+            fileData.fileId = result.file_id;
+            
+            // Upload chunks
+            await this.uploadChunks(fileData);
+            
+            // Complete upload
+            await this.completeFile(fileData);
+            
+        } catch (error) {
+            fileData.status = 'error';
+            throw error;
+        }
+    }
+
+    async uploadChunks(fileData) {
+        const file = fileData.file;
+        const totalChunks = Math.ceil(file.size / this.chunkSize);
+        
+        for (let i = 0; i < totalChunks; i++) {
             const start = i * this.chunkSize;
-            const end = Math.min(start + this.chunkSize, this.file.size);
-            const chunk = this.file.slice(start, end);
+            const end = Math.min(start + this.chunkSize, file.size);
+            const chunk = file.slice(start, end);
             
             const formData = new FormData();
-            formData.append('file_id', this.fileId);
+            formData.append('file_id', fileData.fileId);
             formData.append('chunk_index', i);
             formData.append('chunk_data', chunk);
 
@@ -283,24 +453,20 @@ class ChunkedUploader {
                     throw new Error(result.error || 'Failed to upload chunk');
                 }
 
-                this.currentChunk = i + 1;
-                this.updateProgress(result.progress);
+                fileData.uploadedChunks = i + 1;
+                fileData.progress = (fileData.uploadedChunks / totalChunks) * 100;
+                this.updateProgress(fileData);
                 
             } catch (error) {
-                alert('Erreur lors de l\'upload du chunk ' + (i + 1) + ': ' + error.message);
-                this.reset();
-                return;
+                throw new Error('Erreur lors de l\'upload du chunk ' + (i + 1) + ': ' + error.message);
             }
         }
-
-        // Complete upload
-        await this.completeUpload();
     }
 
-    async completeUpload() {
+    async completeFile(fileData) {
         try {
             // Calculate checksum (SHA-256 hex)
-            const checksum = await this.calculateFileHash();
+            const checksum = await this.calculateFileHash(fileData.file);
             
             const response = await fetch('/api/upload/complete', {
                 method: 'POST',
@@ -308,7 +474,7 @@ class ChunkedUploader {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    file_id: this.fileId,
+                    file_id: fileData.fileId,
                     checksum: checksum
                 })
             });
@@ -318,39 +484,44 @@ class ChunkedUploader {
                 throw new Error(result.error || 'Failed to complete upload');
             }
 
-            alert('Upload terminé avec succès!');
-            window.location.href = '/dashboard';
+            return result;
             
         } catch (error) {
-            alert('Erreur lors de la finalisation: ' + error.message);
-            this.reset();
+            throw new Error('Erreur lors de la finalisation: ' + error.message);
         }
     }
 
-    async calculateFileHash() {
+    async calculateFileHash(file) {
         // Simplified hash calculation - in production, use proper crypto
-        const buffer = await this.file.arrayBuffer();
+        const buffer = await file.arrayBuffer();
         const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    updateProgress(progress) {
-        const percentage = (this.currentChunk / this.totalChunks) * 100;
-        document.querySelector('.progress-bar').style.width = percentage + '%';
+    updateProgress(fileData) {
+        const overallProgress = this.files.reduce((sum, f) => sum + f.progress, 0) / this.files.length;
+        
+        document.querySelector('.progress-bar').style.width = overallProgress + '%';
         document.getElementById('progressText').textContent = 
-            `${percentage.toFixed(1)}%`;
+            `${overallProgress.toFixed(1)}%`;
         
         if (this.startTime) {
             const elapsed = (Date.now() - this.startTime) / 1000;
-            const speed = (this.currentChunk * this.chunkSize) / elapsed;
+            const totalUploaded = this.files.reduce((sum, f) => sum + (f.progress / 100) * f.file.size, 0);
+            const speed = totalUploaded / elapsed;
             document.getElementById('speedText').textContent = this.formatFileSize(speed) + '/s';
         }
+        
+        // Update file info
+        const currentFile = fileData.file;
+        document.getElementById('fileInfo').textContent = 
+            `Upload: ${currentFile.name} (${this.formatFileSize(currentFile.size)})`;
     }
 
     cancelUpload() {
-        if (this.fileId) {
-            fetch(`/api/upload/cancel/${this.fileId}`, {
+        if (this.currentUpload && this.currentUpload.fileId) {
+            fetch(`/api/upload/cancel/${this.currentUpload.fileId}`, {
                 method: 'POST'
             });
         }
@@ -358,15 +529,15 @@ class ChunkedUploader {
     }
 
     reset() {
-        this.file = null;
-        this.fileId = null;
-        this.currentChunk = 0;
-        this.totalChunks = 0;
+        this.files = [];
+        this.currentUpload = null;
         
         document.getElementById('uploadForm').style.display = 'none';
         document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('filePreview').style.display = 'none';
         document.getElementById('chunkedFileInput').value = '';
         document.getElementById('chunkedUploadForm').reset();
+        this.updateFilePreview();
     }
 
     formatFileSize(bytes) {
@@ -378,7 +549,7 @@ class ChunkedUploader {
     }
 }
 
-// Initialize uploader
-const uploader = new ChunkedUploader();
+// Initialize enhanced uploader
+const uploader = new EnhancedChunkedUploader();
 </script>
 {% endblock %}
